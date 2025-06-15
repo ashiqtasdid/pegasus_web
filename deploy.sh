@@ -13,8 +13,10 @@ if [ ! -f .env.production ]; then
     exit 1
 fi
 
-# Load environment variables
-export $(cat .env.production | xargs)
+# Load environment variables (filter out comments and empty lines)
+set -a  # automatically export all variables
+source <(grep -v '^#' .env.production | grep -v '^$')
+set +a  # stop automatically exporting
 
 echo "🔧 Building Docker images..."
 
