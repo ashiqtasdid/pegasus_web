@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { authClient } from '@/lib/auth-client';
-import { LogOut, Mail, Calendar, Github, User as UserIcon } from 'lucide-react';
+import { LogOut, Mail, Calendar, User as UserIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export function UserProfile() {

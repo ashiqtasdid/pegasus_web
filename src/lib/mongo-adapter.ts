@@ -1,4 +1,41 @@
-import { MongoClient, ObjectId } from 'mongodb';
+import { MongoClient } from 'mongodb';
+
+interface User {
+  id?: string;
+  email: string;
+  name?: string;
+  emailVerified?: boolean;
+  image?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+interface Session {
+  id?: string;
+  token: string;
+  userId: string;
+  expiresAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+interface Account {
+  id?: string;
+  providerId: string;
+  accountId: string;
+  userId: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+interface VerificationToken {
+  id?: string;
+  identifier: string;
+  value: string;
+  expiresAt?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
 export async function createMongoClient(uri: string) {
   const client = new MongoClient(uri);
@@ -11,8 +48,7 @@ export function mongoAdapter(client: MongoClient, databaseName = 'pegasus_auth')
   
   return {
     id: 'mongodb',
-    
-    async createUser(user: any) {
+      async createUser(user: Omit<User, 'id'>) {
       const collection = db.collection('users');
       const result = await collection.insertOne({
         ...user,
@@ -32,9 +68,7 @@ export function mongoAdapter(client: MongoClient, databaseName = 'pegasus_auth')
       const collection = db.collection('users');
       const user = await collection.findOne({ email });
       return user ? { ...user, id: user.id || user._id.toString() } : null;
-    },
-
-    async updateUser(id: string, updates: any) {
+    },    async updateUser(id: string, updates: Partial<User>) {
       const collection = db.collection('users');
       await collection.updateOne(
         { id },
@@ -46,25 +80,21 @@ export function mongoAdapter(client: MongoClient, databaseName = 'pegasus_auth')
     async deleteUser(id: string) {
       const collection = db.collection('users');
       await collection.deleteOne({ id });
-    },
-
-    async createSession(session: any) {
+    },    async createSession(session: Omit<Session, 'id'>) {
       const collection = db.collection('sessions');
       const result = await collection.insertOne({
         ...session,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      return { ...session, id: session.id || result.insertedId.toString() };
+      return { ...session, id: result.insertedId.toString() };
     },
 
     async getSession(token: string) {
       const collection = db.collection('sessions');
       const session = await collection.findOne({ token });
       return session ? { ...session, id: session.id || session._id.toString() } : null;
-    },
-
-    async updateSession(token: string, updates: any) {
+    },    async updateSession(token: string, updates: Partial<Session>) {
       const collection = db.collection('sessions');
       const session = await collection.findOneAndUpdate(
         { token },
@@ -77,25 +107,21 @@ export function mongoAdapter(client: MongoClient, databaseName = 'pegasus_auth')
     async deleteSession(token: string) {
       const collection = db.collection('sessions');
       await collection.deleteOne({ token });
-    },
-
-    async createAccount(account: any) {
+    },    async createAccount(account: Omit<Account, 'id'>) {
       const collection = db.collection('accounts');
       const result = await collection.insertOne({
         ...account,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      return { ...account, id: account.id || result.insertedId.toString() };
+      return { ...account, id: result.insertedId.toString() };
     },
 
     async getAccount(providerId: string, accountId: string) {
       const collection = db.collection('accounts');
       const account = await collection.findOne({ providerId, accountId });
       return account ? { ...account, id: account.id || account._id.toString() } : null;
-    },
-
-    async updateAccount(id: string, updates: any) {
+    },    async updateAccount(id: string, updates: Partial<Account>) {
       const collection = db.collection('accounts');
       await collection.updateOne(
         { id },
@@ -108,16 +134,14 @@ export function mongoAdapter(client: MongoClient, databaseName = 'pegasus_auth')
     async deleteAccount(id: string) {
       const collection = db.collection('accounts');
       await collection.deleteOne({ id });
-    },
-
-    async createVerificationToken(verification: any) {
+    },    async createVerificationToken(verification: Omit<VerificationToken, 'id'>) {
       const collection = db.collection('verifications');
       const result = await collection.insertOne({
         ...verification,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      return { ...verification, id: verification.id || result.insertedId.toString() };
+      return { ...verification, id: result.insertedId.toString() };
     },
 
     async getVerificationToken(identifier: string, token: string) {

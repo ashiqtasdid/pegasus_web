@@ -36,8 +36,8 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
         setError(result.error.message || 'Login failed');
       } else {
         onSuccess?.();
-      }
-    } catch (err) {
+      }    } catch (err) {
+      console.error('Login error:', err);
       setError('An unexpected error occurred');
     } finally {
       setIsLoading(false);
@@ -52,8 +52,8 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
       await authClient.signIn.social({
         provider: 'github',
         callbackURL: '/dashboard'
-      });
-    } catch (err) {
+      });    } catch (err) {
+      console.error('GitHub login error:', err);
       setError('GitHub login failed');
       setIsLoading(false);
     }
@@ -158,7 +158,7 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
         </form>
 
         <div className="text-center text-sm">
-          <span className="text-muted-foreground">Don't have an account? </span>
+          <span className="text-muted-foreground">Don&apos;t have an account? </span>
           <button
             onClick={onSwitchToSignup}
             className="text-primary hover:underline font-medium"

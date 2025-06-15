@@ -38,8 +38,8 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
         setError(result.error.message || 'Signup failed');
       } else {
         onSuccess?.();
-      }
-    } catch (err) {
+      }    } catch (err) {
+      console.error('Signup error:', err);
       setError('An unexpected error occurred');
     } finally {
       setIsLoading(false);
@@ -54,8 +54,8 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
       await authClient.signIn.social({
         provider: 'github',
         callbackURL: '/dashboard'
-      });
-    } catch (err) {
+      });    } catch (err) {
+      console.error('GitHub signup error:', err);
       setError('GitHub signup failed');
       setIsLoading(false);
     }

@@ -59,7 +59,7 @@ export default function DashboardPage() {
               Welcome back, {session.user.name || 'Developer'}!
             </h1>
             <p className="text-muted-foreground">
-              Ready to build amazing Minecraft plugins? Let's get started with your personalized dashboard.
+              Ready to build amazing Minecraft plugins? Let&apos;s get started with your personalized dashboard.
             </p>
           </div>
 
