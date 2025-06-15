@@ -17,8 +17,6 @@ const nextConfig: NextConfig = {
         'localhost:3001', 
         '0.0.0.0:3001',
         '37.114.41.124:3001',
-        // Add your server IP/domain if accessing externally
-        ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
       ]
     }
   },
@@ -31,7 +29,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
-            value: process.env.CORS_ORIGIN || '*'
+            value: 'http://37.114.41.124:3001'
           },
           {
             key: 'Access-Control-Allow-Methods',
@@ -39,7 +37,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization, Cookie'
+            value: 'Content-Type, Authorization, Cookie, X-Requested-With'
           },
           {
             key: 'Access-Control-Allow-Credentials',
