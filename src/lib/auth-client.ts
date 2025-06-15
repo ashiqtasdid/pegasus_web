@@ -15,16 +15,6 @@ if (typeof window !== 'undefined') {
 
 export const authClient = createAuthClient({
   baseURL: HARDCODED_BASE_URL,
-  fetchOptions: {
-    onRequest: (context: any) => {
-      console.log('Auth request to:', context.url);
-      return context;
-    },
-    onRequestError: (context: any) => {
-      console.error('Auth request error:', context.error);
-      return context;
-    }
-  }
 });
 
 // Export useful methods for easier imports
