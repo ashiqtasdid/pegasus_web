@@ -1,82 +1,44 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Header } from './Header';
-import { HeroSection } from './HeroSection';
-import { PluginForm } from './PluginForm';
-import { LoadingState } from './LoadingState';
-import { ResultsSection } from './ResultsSection';
-import { ChatSection } from './ChatSection';
-import { ProjectSection } from './ProjectSection';
-import { Footer } from './Footer';
+import { DashboardLayout } from './DashboardLayout';
+import { EnhancedDashboardContent, DashboardView } from './EnhancedDashboardContent';
 import { usePluginGenerator } from '../hooks/usePluginGenerator';
+import { useEffect, useState } from 'react';
 
 export function PluginGenerator() {
-  const {
-    isLoading,
-    results,
-    currentProject,
-    projectFiles,
-    generatePlugin,
-    downloadJar,
-    downloadInstructions,
-    loadProjectFiles,
-    checkExistingProject,
-    sendChatMessage,
-    chatMessages,
-    clearChat,
-    addChatMessage,
-    projectStatus
-  } = usePluginGenerator();
+  const [mounted, setMounted] = useState(false);
+  const [currentView, setCurrentView] = useState<DashboardView>('overview');
+  const pluginGeneratorProps = usePluginGenerator();
 
-  return (
-    <div className="bg-gray-50 min-h-screen">
-      <Header />
-      
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <HeroSection />
-          
-          <div className="max-w-4xl mx-auto">
-            <PluginForm
-              onSubmit={generatePlugin}
-              isLoading={isLoading}
-              onPluginNameChange={checkExistingProject}
-              onUserIdChange={checkExistingProject}
-              projectStatus={projectStatus}
-            />
-            
-            {isLoading && <LoadingState />}
-            
-            {results && (
-              <ResultsSection
-                results={results}
-                onDownloadJar={downloadJar}
-                onDownloadInstructions={downloadInstructions}
-              />
-            )}
-            
-            <ChatSection
-              messages={chatMessages}
-              onSendMessage={sendChatMessage}
-              onClearChat={clearChat}
-              currentProject={currentProject}
-            />
-            
-            {projectFiles && (
-              <ProjectSection
-                projectFiles={projectFiles}
-                currentProject={currentProject}
-                onDownloadJar={downloadJar}
-                onDownloadInstructions={downloadInstructions}
-                onRefreshProject={loadProjectFiles}
-              />
-            )}
-          </div>
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleViewChange = (view: DashboardView) => {
+    setCurrentView(view);
+  };
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading Pegasus...</p>
         </div>
       </div>
-      
-      <Footer />
-    </div>
+    );
+  }
+
+  return (
+    <DashboardLayout 
+      currentView={currentView} 
+      onViewChange={handleViewChange}
+    >
+      <EnhancedDashboardContent 
+        {...pluginGeneratorProps} 
+        currentView={currentView}
+        onViewChange={handleViewChange}
+      />
+    </DashboardLayout>
   );
 }

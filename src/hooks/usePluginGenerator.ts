@@ -51,8 +51,31 @@ export function usePluginGenerator() {
   const [projectFiles, setProjectFiles] = useState<ProjectData | null>(null);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [projectStatus, setProjectStatus] = useState<string | null>(null);
-
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
+
+  const loadProjectFiles = useCallback(async (userId: string, pluginName: string) => {
+    if (!userId || !pluginName) return;
+
+    try {
+      const response = await fetch(`${apiBase}/plugin/read`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId, pluginName })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to load project files: ${response.statusText}`);
+      }
+
+      const projectData = await response.json();
+      setProjectFiles(projectData);
+
+    } catch (error) {
+      console.error('Error loading project files:', error);
+    }
+  }, [apiBase]);
 
   const generatePlugin = useCallback(async (data: FormData) => {
     const requestData = {
@@ -105,35 +128,10 @@ export function usePluginGenerator() {
       setResults({
         result: `Error: ${errorMessage}`,
         requestData
-      });
-    } finally {
+      });    } finally {
       setIsLoading(false);
     }
-  }, [apiBase]);
-
-  const loadProjectFiles = useCallback(async (userId: string, pluginName: string) => {
-    if (!userId || !pluginName) return;
-
-    try {
-      const response = await fetch(`${apiBase}/plugin/read`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId, pluginName })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to load project files: ${response.statusText}`);
-      }
-
-      const projectData = await response.json();
-      setProjectFiles(projectData);
-
-    } catch (error) {
-      console.error('Error loading project files:', error);
-    }
-  }, [apiBase]);
+  }, [apiBase, loadProjectFiles]);
 
   const downloadJar = useCallback(async (userId: string, pluginName: string) => {
     try {
@@ -275,10 +273,9 @@ For support or modifications, refer to the generated source code.
         <div class="flex items-center p-2 bg-red-50 border border-red-200 rounded">
           <div class="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
           <span class="text-red-800 text-xs">Could not check project status</span>
-        </div>
-      `);
+        </div>      `);
     }
-  }, [apiBase, loadProjectFiles]);
+  }, [apiBase]);
 
   const sendChatMessage = useCallback(async (message: string) => {
     // Add user message immediately
