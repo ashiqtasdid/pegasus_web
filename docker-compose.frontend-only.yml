@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # Your Next.js frontend service
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pegasus-frontend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOSTNAME=0.0.0.0
+      # Add your production environment variables here
+      - MONGODB_URI=${MONGODB_URI}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL}
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+      - NEXT_PUBLIC_BETTER_AUTH_URL=${NEXT_PUBLIC_BETTER_AUTH_URL}
+    restart: unless-stopped
+    networks:
+      - pegasus-network
+
+networks:
+  pegasus-network:
+    driver: bridge
+
+# Optional: Add volumes for persistent data
+volumes:
+  app-data:
+    driver: local

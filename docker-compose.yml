@@ -1,24 +1,17 @@
 version: '3.8'
 
-services:
-  # Your existing backend service (assumed to be running on port 3000)
+services:  # Backend service - using a placeholder image for now
+  # Remove this service if you have a separate backend deployment
   backend:
-    # Replace this with your actual backend image or build configuration
-    # For example, if you have a backend Dockerfile:
-    # build:
-    #   context: ../backend
-    #   dockerfile: Dockerfile
-    # Or if you're using an existing image:
-    # image: your-backend-image:latest
+    image: nginx:alpine
     container_name: pegasus-backend
     ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
+      - "3000:80"
+    volumes:
+      - ./backend-placeholder.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - pegasus-network
-    # Add any backend-specific environment variables here
+    # This is a placeholder - replace with your actual backend service
     
   # Your Next.js frontend service
   frontend:
