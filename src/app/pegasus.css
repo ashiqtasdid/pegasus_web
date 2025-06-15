@@ -1,0 +1,251 @@
+/* Custom styles for Pegasus Plugin Generator */
+
+@layer utilities {
+  .gradient-bg {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+
+  .code-container {
+    background: #1a1a1a;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .loading-dots::after {
+    content: '';
+    animation: dots 1.5s steps(5, end) infinite;
+  }
+
+  @keyframes dots {
+    0%, 20% { content: ''; }
+    40% { content: '.'; }
+    60% { content: '..'; }
+    80%, 100% { content: '...'; }
+  }
+
+  .pulse-ring {
+    animation: pulse-ring 1.25s ease-in-out infinite;
+  }
+
+  @keyframes pulse-ring {
+    0% { transform: scale(0.33); }
+    40%, 50% { opacity: 1; }
+    100% { opacity: 0; transform: scale(1.33); }
+  }
+
+  /* Syntax highlighting for code blocks */
+  .code-container pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+  }
+
+  .code-container .keyword {
+    color: #569cd6;
+  }
+
+  .code-container .string {
+    color: #ce9178;
+  }
+
+  .code-container .comment {
+    color: #6a9955;
+  }
+
+  .code-container .number {
+    color: #b5cea8;
+  }
+
+  .code-container .class-name {
+    color: #4ec9b0;
+  }
+
+  .code-container .function {
+    color: #dcdcaa;
+  }
+
+  /* Compact project styles */
+  .compact-project-info {
+    padding: 12px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .compact-project-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .compact-project-info-item {
+    font-size: 0.75rem;
+  }
+
+  .compact-project-info-label {
+    font-weight: 600;
+    color: #4b5563;
+  }
+
+  .compact-download-section {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .compact-download-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    color: white;
+    background-color: #4f46e5;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .compact-download-btn:hover {
+    background-color: #4338ca;
+  }
+
+  .compact-download-btn.secondary {
+    background-color: #059669;
+  }
+
+  .compact-download-btn.secondary:hover {
+    background-color: #047857;
+  }
+
+  /* VS Code style file explorer */
+  .vscode-explorer {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 13px;
+    background: #252526;
+    color: #cccccc;
+  }
+
+  .collapsible-file {
+    border-bottom: 1px solid #2d2d30;
+  }
+
+  .collapsible-header {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    cursor: pointer;
+    background: #2d2d30;
+    transition: background-color 0.1s;
+  }
+
+  .collapsible-header:hover {
+    background: #383838;
+  }
+
+  .collapsible-header.collapsed .collapsible-toggle {
+    transform: rotate(-90deg);
+  }
+
+  .collapsible-toggle {
+    width: 12px;
+    height: 12px;
+    margin-right: 4px;
+    transition: transform 0.1s;
+    color: #858585;
+  }
+
+  .vscode-file-item {
+    display: flex;
+    align-items: center;
+    flex: 1;
+  }
+
+  .vscode-file-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .vscode-file-name {
+    color: #cccccc;
+    font-size: 13px;
+  }
+
+  .collapsible-content {
+    overflow: hidden;
+    transition: max-height 0.2s ease-out;
+  }
+
+  .collapsible-content.collapsed {
+    display: none;
+  }
+
+  .compact-code-viewer {
+    background: #1e1e1e;
+    border: 1px solid #3c3c3c;
+    border-radius: 4px;
+    margin: 8px;
+    overflow: hidden;
+  }
+
+  .compact-code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: #2d2d30;
+    border-bottom: 1px solid #3c3c3c;
+    font-size: 11px;
+    color: #858585;
+  }
+
+  .compact-code-content {
+    padding: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .compact-line-numbers {
+    display: inline-block;
+    width: 30px;
+    color: #6e7681;
+    text-align: right;
+    margin-right: 12px;
+    user-select: none;
+  }
+
+  /* Chat message styling */
+  .chat-message {
+    animation: fadeInUp 0.3s ease-out;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 640px) {
+    .compact-project-info-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .compact-download-section {
+      flex-direction: column;
+    }
+  }
+}
