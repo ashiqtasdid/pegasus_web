@@ -119,12 +119,10 @@ export function DashboardContent(props: DashboardContentProps) {
                 Describe your plugin idea and let AI create it for you
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-2">
-              <DashboardPluginForm
+            <CardContent className="pt-2">              <DashboardPluginForm
                 onSubmit={generatePlugin}
                 isLoading={isLoading}
                 onPluginNameChange={checkExistingProject}
-                onUserIdChange={checkExistingProject}
                 projectStatus={projectStatus}
               />
             </CardContent>
