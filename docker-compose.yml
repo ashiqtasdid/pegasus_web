@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # Your existing backend service (assumed to be running on port 3000)
+  backend:
+    # Replace this with your actual backend image or build configuration
+    # For example, if you have a backend Dockerfile:
+    # build:
+    #   context: ../backend
+    #   dockerfile: Dockerfile
+    # Or if you're using an existing image:
+    # image: your-backend-image:latest
+    container_name: pegasus-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    networks:
+      - pegasus-network
+    # Add any backend-specific environment variables here
+    
+  # Your Next.js frontend service
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pegasus-frontend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOSTNAME=0.0.0.0
+      # Backend API URL for internal communication
+      - NEXT_PUBLIC_API_BASE_URL=http://backend:3000
+      - NEXT_PUBLIC_BETTER_AUTH_URL=http://localhost:3001
+      # Add your production environment variables here
+      - MONGODB_URI=${MONGODB_URI}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BETTER_AUTH_URL=http://localhost:3001
+    depends_on:
+      - backend
+    networks:
+      - pegasus-network
+    restart: unless-stopped
+
+networks:
+  pegasus-network:
+    driver: bridge
+
+# Optional: Add volumes for persistent data
+volumes:
+  mongo-data:
+    driver: local
