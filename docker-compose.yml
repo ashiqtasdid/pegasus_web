@@ -1,18 +1,7 @@
 version: '3.8'
 
-services:  # Backend service - using a placeholder image for now
-  # Remove this service if you have a separate backend deployment
-  backend:
-    image: nginx:alpine
-    container_name: pegasus-backend
-    ports:
-      - "3000:80"
-    volumes:
-      - ./backend-placeholder.conf:/etc/nginx/conf.d/default.conf:ro
-    networks:
-      - pegasus-network
-    # This is a placeholder - replace with your actual backend service
-      # Your Next.js frontend service
+services:
+  # Next.js frontend service
   frontend:
     build:
       context: .
@@ -26,19 +15,12 @@ services:  # Backend service - using a placeholder image for now
       - NODE_ENV=production
       - PORT=3000
       - HOSTNAME=0.0.0.0
-      # Backend API URL for internal communication
-      - NEXT_PUBLIC_API_BASE_URL=http://backend:3000
-    depends_on:
-      - backend
-    networks:
-      - pegasus-network
+      # Connect to your existing backend on port 3001
+      - NEXT_PUBLIC_API_BASE_URL=http://37.114.41.124:3001
     restart: unless-stopped
-
-networks:
-  pegasus-network:
-    driver: bridge
+    network_mode: "host"  # Use host network to connect to existing backend
 
 # Optional: Add volumes for persistent data
 volumes:
-  mongo-data:
+  frontend-data:
     driver: local

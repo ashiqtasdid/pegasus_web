@@ -1,6 +1,7 @@
 version: '3.8'
 
-services:  # Your Next.js frontend service
+services:
+  # Your Next.js frontend service
   frontend:
     build:
       context: .
