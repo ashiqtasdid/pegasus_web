@@ -1,18 +1,23 @@
 'use client';
 
 import { useSession } from '@/lib/auth-client';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { DashboardOverview } from '@/components/DashboardOverview';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { VSCodeLayout } from '@/components/VSCodeLayout';
 import { Loader2 } from 'lucide-react';
 
-export default function DashboardPage() {
+function EditorPageContent() {
   const { data: session, isPending, error } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
   
   // Check if we're in development mode
   const isDevelopmentMode = process.env.DEVELOP === 'true';
+  
+  // Get plugin info from URL
+  const pluginId = searchParams.get('plugin');
+  const userId = searchParams.get('userId');
 
   useEffect(() => {
     setMounted(true);
@@ -34,9 +39,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">
-            {isDevelopmentMode ? 'Loading dashboard...' : 'Loading dashboard...'}
-          </p>
+          <p className="text-muted-foreground">Loading editor...</p>
         </div>
       </div>
     );
@@ -46,5 +49,20 @@ export default function DashboardPage() {
     return null; // Will redirect to auth
   }
   
-  return <DashboardOverview />;
+  return <VSCodeLayout pluginId={pluginId} userId={userId} />;
+}
+
+export default function EditorPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading editor...</p>
+        </div>
+      </div>
+    }>
+      <EditorPageContent />
+    </Suspense>
+  );
 }

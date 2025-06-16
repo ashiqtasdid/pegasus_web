@@ -1,0 +1,270 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { 
+  Plus, 
+  Edit, 
+  Package,
+  Code,
+  FileText,
+  Rocket,
+  ChevronRight,
+  Calendar,
+  TrendingUp
+} from 'lucide-react';
+
+interface Plugin {
+  _id: string;
+  userId: string;
+  pluginName: string;
+  description?: string;
+  minecraftVersion?: string;
+  dependencies?: string[];
+  files?: PluginFile[];
+  metadata?: {
+    mainClass?: string;
+    version?: string;
+    author?: string;
+    apiVersion?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+  isActive: boolean;
+}
+
+interface PluginFile {
+  path: string;
+  content: string;
+  type: string;
+}
+
+interface PluginStats {
+  totalPlugins: number;
+  recentPlugins: Plugin[];
+  favoriteMinecraftVersions: string[];
+}
+
+export function DashboardOverview() {
+  const router = useRouter();
+  const [plugins, setPlugins] = useState<Plugin[]>([]);
+  const [stats, setStats] = useState<PluginStats | null>(null);
+
+  useEffect(() => {
+    loadPlugins();
+    loadStats();
+  }, []);
+
+  const loadPlugins = async () => {
+    try {
+      const response = await fetch('/api/plugins');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setPlugins(data.plugins);      }
+    } catch (err) {
+      console.error('Error loading plugins:', err);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const response = await fetch('/api/plugins/stats');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setStats(data.stats);
+      }
+    } catch (err) {
+      console.error('Error loading stats:', err);
+    }
+  };
+
+  const handleCreateNewPlugin = () => {
+    router.push('/dashboard/create');
+  };
+
+  const handleEditPlugin = (pluginId: string) => {
+    router.push(`/dashboard/editor?plugin=${pluginId}`);
+  };
+
+  return (
+    <div className="space-y-8 p-6">
+      {/* Welcome Header */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+            Welcome to Pegasus
+          </h1>
+          <p className="text-lg text-muted-foreground">
+            AI-powered Minecraft plugin development platform
+          </p>
+        </div>
+        <Badge variant="secondary" className="gap-1.5 px-3 py-1 text-sm">
+          <Rocket className="h-4 w-4" />
+          AI-Powered
+        </Badge>
+      </div>
+
+      <Separator className="my-8" />
+
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Plugins</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center space-x-2">
+              <Package className="h-4 w-4 text-blue-500" />
+              <span className="text-2xl font-bold">{stats?.totalPlugins || 0}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center space-x-2">
+              <TrendingUp className="h-4 w-4 text-green-500" />
+              <span className="text-2xl font-bold">{stats?.recentPlugins?.length || 0}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active Projects</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center space-x-2">
+              <Code className="h-4 w-4 text-purple-500" />
+              <span className="text-2xl font-bold">{plugins.filter(p => p.isActive).length}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Action Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Create New Plugin Card */}
+        <Card className="border-0 shadow-xl bg-gradient-to-br from-primary/5 to-primary/10 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 cursor-pointer group" onClick={handleCreateNewPlugin}>
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div className="p-4 bg-primary/10 rounded-xl w-fit group-hover:bg-primary/20 transition-colors">
+                <Plus className="h-10 w-10 text-primary" />
+              </div>
+              <ChevronRight className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <h3 className="text-2xl font-bold mb-3">Create New Plugin</h3>
+            <p className="text-muted-foreground mb-6 leading-relaxed">
+              Start building a new Minecraft plugin with AI assistance. Generate code, add features, and deploy with ease.
+            </p>
+            <Button size="lg" className="w-full group-hover:shadow-lg transition-shadow">
+              <Plus className="h-5 w-5 mr-2" />
+              Get Started
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Modify Existing Plugin Card */}
+        <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-500/5 to-blue-500/10 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div className="p-4 bg-blue-500/10 rounded-xl w-fit">
+                <Edit className="h-10 w-10 text-blue-500" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <h3 className="text-2xl font-bold mb-3">Modify Existing Plugin</h3>
+            <p className="text-muted-foreground mb-6 leading-relaxed">
+              Edit and enhance your existing plugins with AI-powered features and advanced code generation.
+            </p>
+            
+            {plugins.length > 0 ? (
+              <ScrollArea className="max-h-40 mb-4">
+                <div className="space-y-2">
+                  {plugins.slice(0, 3).map((plugin) => (
+                    <div 
+                      key={plugin._id} 
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
+                      onClick={() => handleEditPlugin(plugin._id)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <FileText className="h-4 w-4 text-blue-500" />
+                        <div>
+                          <p className="font-medium text-sm">{plugin.pluginName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {plugin.minecraftVersion && `MC ${plugin.minecraftVersion}`}
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            ) : (
+              <div className="text-center py-6 text-muted-foreground">
+                <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No plugins yet. Create your first plugin!</p>
+              </div>
+            )}
+            
+            {plugins.length > 3 && (
+              <Button variant="outline" size="sm" className="w-full" onClick={() => router.push('/dashboard/plugins')}>
+                View All Plugins ({plugins.length})
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Activity */}
+      {stats?.recentPlugins && stats.recentPlugins.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold">Recent Activity</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {stats.recentPlugins.map((plugin) => (
+              <Card key={plugin._id} className="border-0 shadow-lg bg-card/50 backdrop-blur-sm hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => handleEditPlugin(plugin._id)}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{plugin.pluginName}</CardTitle>
+                    <Badge variant="secondary" className="text-xs">
+                      {plugin.minecraftVersion || 'Unknown'}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                    {plugin.description || 'No description available'}
+                  </p>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center space-x-1">
+                      <Calendar className="h-3 w-3" />
+                      <span>{new Date(plugin.updatedAt).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <FileText className="h-3 w-3" />
+                      <span>{plugin.files?.length || 0} files</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

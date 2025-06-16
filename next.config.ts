@@ -1,13 +1,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Enable standalone output for Docker deployment
-  output: 'standalone',
+  // Enable standalone output for Docker deployment (disabled for development)
+  // output: 'standalone',
+  
+  // Disable source maps in development to avoid 404 errors
+  productionBrowserSourceMaps: false,
   
   // Explicitly define environment variables for the client
   env: {
     NEXT_PUBLIC_BETTER_AUTH_URL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
     NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
+    DEVELOP: process.env.DEVELOP,
   },
   
   // Configure port and hostname

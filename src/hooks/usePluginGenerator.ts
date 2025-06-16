@@ -53,6 +53,162 @@ export function usePluginGenerator() {
   const [projectStatus, setProjectStatus] = useState<string | null>(null);
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
 
+  // Function to extract plugin information from generation result
+  const extractPluginInfo = useCallback((result: string, prompt: string) => {
+    // Extract Minecraft version (look for common patterns)
+    const minecraftVersionMatch = result.match(/(?:minecraft|version|api)[\s:]*(\d+\.\d+(?:\.\d+)?)/i);
+    const minecraftVersion = minecraftVersionMatch ? minecraftVersionMatch[1] : '1.20.1';
+    
+    // Extract main class (look for common patterns)
+    const mainClassMatch = result.match(/main[:\s]+([A-Za-z][A-Za-z0-9_.]*)/i) || 
+                          result.match(/class\s+([A-Za-z][A-Za-z0-9_]*)\s+extends\s+JavaPlugin/i);
+    const mainClass = mainClassMatch ? mainClassMatch[1] : 'Main';
+    
+    // Extract API version
+    const apiVersionMatch = result.match(/api-version[:\s]*(['""]?)(\d+\.\d+)\1/i);
+    const apiVersion = apiVersionMatch ? apiVersionMatch[2] : '1.20';
+    
+    // Determine dependencies based on prompt content
+    const dependencies: string[] = [];
+    if (prompt.toLowerCase().includes('vault')) {
+      dependencies.push('Vault');
+    }
+    if (prompt.toLowerCase().includes('worldedit')) {
+      dependencies.push('WorldEdit');
+    }
+    if (prompt.toLowerCase().includes('citizens')) {
+      dependencies.push('Citizens');
+    }
+    
+    return {
+      minecraftVersion,
+      mainClass,
+      apiVersion,
+      dependencies,
+    };
+  }, []);
+
+  // Function to extract files from generation result
+  const extractFilesFromResult = useCallback((result: string, pluginName: string) => {
+    const files: Array<{ path: string; content: string; type: string }> = [];
+    
+    try {
+      // Look for file markers in the result
+      const filePattern = /---\s*FILE:\s*([^\n]+)\s*---\n([\s\S]*?)(?=---\s*FILE:|$)/g;
+      let match;
+      
+      while ((match = filePattern.exec(result)) !== null) {
+        const filePath = match[1].trim();
+        const content = match[2].trim();
+        
+        if (filePath && content) {
+          files.push({
+            path: filePath,
+            content: content,
+            type: filePath.endsWith('.java') ? 'java' : 
+                  filePath.endsWith('.yml') ? 'yaml' : 
+                  filePath.endsWith('.xml') ? 'xml' : 'text'
+          });
+        }
+      }
+      
+      // If no files found with FILE markers, try to extract main class
+      if (files.length === 0) {
+        // Look for Java class content
+        const javaClassPattern = /public class\s+(\w+)[\s\S]*?^}/gm;
+        const javaMatch = javaClassPattern.exec(result);
+        
+        if (javaMatch) {
+          const className = javaMatch[1];
+          const content = javaMatch[0];
+          files.push({
+            path: `src/main/java/com/example/${pluginName.toLowerCase()}/${className}.java`,
+            content: content,
+            type: 'java'
+          });
+        }
+        
+        // Look for plugin.yml content
+        const pluginYmlPattern = /name:\s*[\w\s]+\nversion:[\s\S]*?(?=\n\n|\n[^\s]|$)/g;
+        const ymlMatch = pluginYmlPattern.exec(result);
+        
+        if (ymlMatch) {
+          files.push({
+            path: 'src/main/resources/plugin.yml',
+            content: ymlMatch[0],
+            type: 'yaml'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error extracting files from result:', error);
+    }
+    
+    return files;
+  }, []);
+
+  // Function to save plugin to database
+  const savePluginToDatabase = useCallback(async (
+    project: CurrentProject, 
+    prompt: string, 
+    generationResult: string
+  ) => {
+    try {
+      // Extract plugin information from the generation result
+      const pluginInfo = extractPluginInfo(generationResult, prompt);
+      
+      // Extract files from the generation result
+      const extractedFiles = extractFilesFromResult(generationResult, project.pluginName);
+      
+      const pluginData = {
+        pluginName: project.pluginName,
+        description: prompt,
+        minecraftVersion: pluginInfo.minecraftVersion,
+        dependencies: pluginInfo.dependencies,
+        files: extractedFiles, // Now includes the actual generated files
+        metadata: {
+          mainClass: pluginInfo.mainClass,
+          version: '1.0.0',
+          apiVersion: pluginInfo.apiVersion,
+        },
+      };
+
+      const response = await fetch('/api/plugins', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(pluginData),
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        console.log('Plugin saved to database:', result.plugin);
+        // Dispatch custom event for notifications
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('plugin-saved', {
+            detail: { plugin: result.plugin }
+          }));
+        }
+      } else {
+        console.error('Failed to save plugin:', result.error);
+        // Dispatch error event
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('plugin-save-error', {
+            detail: { error: result.error }
+          }));        }
+      }
+    } catch (error) {
+      console.error('Error saving plugin to database:', error);
+      // Dispatch error event
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('plugin-save-error', {
+          detail: { error: 'Network error saving plugin' }
+        }));
+      }    }
+  }, [extractPluginInfo, extractFilesFromResult]);
+
   const loadProjectFiles = useCallback(async (userId: string, pluginName: string) => {
     if (!userId || !pluginName) return;
 
@@ -112,10 +268,22 @@ export function usePluginGenerator() {
         userId: data.userId,
         pluginName: extractedPluginName
       };
-      setCurrentProject(newProject);
-
-      // Load project files if generation was successful
+      setCurrentProject(newProject);      // Load project files if generation was successful
       if (result.includes('COMPILATION SUCCESSFUL') || result.includes('Plugin project generated')) {
+        // Save plugin to database
+        await savePluginToDatabase(newProject, data.prompt, result);
+        
+        // Dispatch event to notify about plugin generation
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('plugin-generated', {
+            detail: {
+              pluginName: newProject.pluginName,
+              userId: newProject.userId,
+              success: true
+            }
+          }));
+        }
+        
         setTimeout(() => {
           loadProjectFiles(newProject.userId, newProject.pluginName);
         }, 1000);
@@ -131,7 +299,7 @@ export function usePluginGenerator() {
       });    } finally {
       setIsLoading(false);
     }
-  }, [apiBase, loadProjectFiles]);
+  }, [apiBase, loadProjectFiles, savePluginToDatabase]);
 
   const downloadJar = useCallback(async (userId: string, pluginName: string) => {
     try {
@@ -299,9 +467,7 @@ For support or modifications, refer to the generated source code.
         })
       });
 
-      const data = await response.json();
-
-      if (data.success) {
+      const data = await response.json();      if (data.success) {
         const assistantMessage: Message = {
           type: 'assistant',
           content: data.message,
@@ -313,6 +479,21 @@ For support or modifications, refer to the generated source code.
           }
         };
         setChatMessages(prev => [...prev, assistantMessage]);
+        
+        // Dispatch event to trigger file refresh after AI chat completion
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('ai-chat-completed', {
+            detail: {
+              success: true,
+              pluginName: currentProject?.pluginName,
+              userId: currentProject?.userId,
+              message: data.message,
+              type: data.type,
+              contextLoaded: data.contextLoaded,
+              filesAnalyzed: data.filesAnalyzed
+            }
+          }));
+        }
       } else {
         const errorMessage: Message = {
           type: 'error',

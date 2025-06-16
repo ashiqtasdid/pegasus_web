@@ -9,6 +9,9 @@ export default function Home() {
   const { data: session, isPending } = useSession();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  
+  // Check if we're in development mode
+  const isDevelopmentMode = process.env.DEVELOP === 'true';
 
   useEffect(() => {
     setMounted(true);
@@ -16,13 +19,13 @@ export default function Home() {
 
   useEffect(() => {
     if (mounted && !isPending) {
-      if (session) {
+      if (session || isDevelopmentMode) {
         router.push('/dashboard');
       } else {
         router.push('/auth');
       }
     }
-  }, [session, isPending, router, mounted]);
+  }, [session, isPending, router, mounted, isDevelopmentMode]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-secondary/20">
