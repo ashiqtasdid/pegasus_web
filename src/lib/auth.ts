@@ -9,13 +9,14 @@ const db = client.db("pegasus_auth");
 
 export const auth = betterAuth({
   database: mongodbAdapter(db),
-  
-  // Hardcoded server configuration for production
-  baseURL: "http://37.114.41.124:3001",
+    // Frontend (with auth) runs on port 3000, external API runs on port 3001
+  baseURL: process.env.NODE_ENV === 'production' 
+    ? "http://37.114.41.124:3000" 
+    : "http://localhost:3000",
   trustedOrigins: [
-    "http://37.114.41.124:3001",
-    "http://localhost:3001",
-    "http://0.0.0.0:3001",
+    "http://37.114.41.124:3000",
+    "http://localhost:3000",
+    "http://0.0.0.0:3000",
   ],
   
   emailAndPassword: {

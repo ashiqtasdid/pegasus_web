@@ -7,12 +7,12 @@ services:  # Your Next.js frontend service
       dockerfile: Dockerfile
     container_name: pegasus-frontend
     ports:
-      - "3001:3001"
+      - "3000:3000"
     env_file:
       - .env.production
     environment:
       - NODE_ENV=production
-      - PORT=3001
+      - PORT=3000
       - HOSTNAME=0.0.0.0
     restart: unless-stopped
     networks:

@@ -37,7 +37,7 @@ sleep 10
 # Check if services are running
 if docker-compose ps | grep -q "Up"; then
     echo "✅ Deployment successful!"
-    echo "🌐 Frontend is running on: http://localhost:3001"
+    echo "🌐 Frontend is running on: http://localhost:3000"
     echo "🔧 Backend should be running on: http://localhost:3000"
     echo ""
     echo "📊 Service status:"

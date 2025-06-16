@@ -1,4 +1,4 @@
-# Pegasus Web Deployment Script (PowerShell)
+# Pegasus Web Deployment Script (PowerShe    Write-Host "🌐 Frontend is running on: http://localhost:3000" -ForegroundColor Cyanl)
 
 Write-Host "🚀 Starting Pegasus Web Deployment..." -ForegroundColor Green
 

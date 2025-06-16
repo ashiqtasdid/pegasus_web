@@ -14,9 +14,11 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       allowedOrigins: [
-        'localhost:3001', 
-        '0.0.0.0:3001',
-        '37.114.41.124:3001',
+        'localhost:3000', 
+        '0.0.0.0:3000',
+        '37.114.41.124:3000',
+        'localhost:3001',
+        '37.114.41.124:3001', // Allow requests to external API
       ]
     }
   },
@@ -29,7 +31,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
-            value: 'http://37.114.41.124:3001'
+            value: 'http://37.114.41.124:3000'
           },
           {
             key: 'Access-Control-Allow-Methods',

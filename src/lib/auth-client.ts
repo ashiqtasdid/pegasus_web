@@ -2,14 +2,16 @@
 
 import { createAuthClient } from "better-auth/react";
 
-// Force the exact IP - no environment variables or fallbacks
-const HARDCODED_BASE_URL = "http://37.114.41.124:3001";
+// Frontend runs on port 3000 (with auth endpoints), external API runs on port 3001
+const HARDCODED_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? "http://37.114.41.124:3000" 
+  : "http://localhost:3000";
 
 // Log to console to verify what's being used
 if (typeof window !== 'undefined') {
   console.log('=== AUTH CLIENT CONFIG ===');
-  console.log('Hardcoded Base URL:', HARDCODED_BASE_URL);
-  console.log('Window location:', window.location.href);
+  console.log('Auth API Base URL:', HARDCODED_BASE_URL);
+  console.log('Frontend location:', window.location.href);
   console.log('========================');
 }
 

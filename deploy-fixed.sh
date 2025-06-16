@@ -40,7 +40,7 @@ fi
 
 if [ $? -eq 0 ]; then
     echo "✅ Deployment successful!"
-    echo "🌐 Frontend is running on: http://localhost:3001"
+    echo "🌐 Frontend is running on: http://localhost:3000"
     if [ "$1" != "--frontend-only" ]; then
         echo "🔧 Backend placeholder is running on: http://localhost:3000"
     fi

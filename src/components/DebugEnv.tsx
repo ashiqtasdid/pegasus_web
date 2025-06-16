@@ -17,7 +17,7 @@ export function DebugEnv() {
       <div>Auth URL: {process.env.NEXT_PUBLIC_BETTER_AUTH_URL || 'undefined'}</div>
       <div>API URL: {process.env.NEXT_PUBLIC_API_BASE_URL || 'undefined'}</div>
       <div>Location: {typeof window !== 'undefined' ? window.location.host : 'server'}</div>
-      <div>Hardcoded: 37.114.41.124:3001</div>
+      <div>Hardcoded: Frontend:3000, API:3001</div>
       <div className="text-green-400">Build: {new Date().toLocaleTimeString()}</div>
     </div>
   );

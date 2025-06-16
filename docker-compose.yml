@@ -19,12 +19,12 @@ services:  # Backend service - using a placeholder image for now
       dockerfile: Dockerfile
     container_name: pegasus-frontend
     ports:
-      - "3001:3001"
+      - "3000:3000"
     env_file:
       - .env.production
     environment:
       - NODE_ENV=production
-      - PORT=3001
+      - PORT=3000
       - HOSTNAME=0.0.0.0
       # Backend API URL for internal communication
       - NEXT_PUBLIC_API_BASE_URL=http://backend:3000
