@@ -48,13 +48,14 @@ export async function POST(request: NextRequest) {
         version: '1.0.0',
         ...metadata
       }
-    };
-
-    console.log('Creating plugin with data:', {
+    };    console.log('Creating plugin with data:', {
       userId,
       pluginName,
       filesCount: files?.length || 0,
-      files: files?.map((f: any) => ({ path: f.path, contentLength: f.content?.length || 0 })) || []
+      files: files?.map((f: { path: string; content: string; type: string }) => ({ 
+        path: f.path, 
+        contentLength: f.content?.length || 0 
+      })) || []
     });
 
     // Save plugin to database
