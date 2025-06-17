@@ -20,7 +20,10 @@ import {
   Package,
   GitBranch,
   RefreshCw,
-  RotateCcw
+  RotateCcw,
+  Clock,
+  Play,
+  Pause
 } from 'lucide-react';
 import { usePluginSync } from '@/hooks/usePluginSync';
 
@@ -48,6 +51,9 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
   const [leftSidebarView, setLeftSidebarView] = useState<'explorer' | 'plugins'>('explorer');
   const [mounted, setMounted] = useState(false);  const [pluginFiles, setPluginFiles] = useState<FileNode[]>([]);
+  const [isAutoRefreshEnabled, setIsAutoRefreshEnabled] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [isLoadingPlugin, setIsLoadingPlugin] = useState(false);
   const [lastLoadedPluginId, setLastLoadedPluginId] = useState<string | null>(null);
     // Chat state
@@ -201,6 +207,7 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
             setSelectedFile(fileNodes[0]);
           }          
           showSuccessRef.current('Files Loaded', `Loaded ${fileNodes.length} files for ${pluginName}`);
+          setLastRefreshTime(new Date());
         } else {
           console.log('⚠️ No files found in plugin');
           setPluginFiles([]);
@@ -208,7 +215,8 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
           setLastLoadedPluginId(pluginName);
           setSelectedFile(null);
           showSuccessRef.current('No Files', 'Plugin loaded but no files found');
-        }      } else {
+          setLastRefreshTime(new Date());
+        }} else {
         console.error('❌ Plugin load error:');
         console.error('Response OK:', response.ok);
         console.error('Data:', data);
@@ -222,7 +230,65 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
     } finally {
       setIsLoadingPlugin(false);
     }
-  }, []); // Remove all dependencies to make it stable  // Load plugin files if pluginId is provided - ONLY ONCE
+  }, []); // Remove all dependencies to make it stable
+
+  // Auto-refresh functions
+  const startAutoRefresh = useCallback((pluginName: string) => {
+    // Clear existing interval if any
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+    }
+
+    // Start new interval for 2 minutes (120000ms)
+    const intervalId = setInterval(() => {
+      console.log('Auto-refreshing plugin files for:', pluginName);
+      loadPluginFiles(pluginName, true); // Force refresh
+    }, 120000);
+
+    setAutoRefreshInterval(intervalId);
+    setIsAutoRefreshEnabled(true);
+    console.log('Auto-refresh started for plugin:', pluginName, '(every 2 minutes)');
+    showSuccessRef.current('Auto-refresh Started', 'Files will refresh every 2 minutes');
+  }, [loadPluginFiles, autoRefreshInterval]);
+
+  const stopAutoRefresh = useCallback(() => {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+      setAutoRefreshInterval(null);
+    }
+    setIsAutoRefreshEnabled(false);
+    console.log('Auto-refresh stopped');
+    showSuccessRef.current('Auto-refresh Stopped', 'Files will no longer auto-refresh');
+  }, [autoRefreshInterval]);
+
+  // Toggle auto-refresh
+  const toggleAutoRefresh = useCallback(() => {
+    if (isAutoRefreshEnabled) {
+      stopAutoRefresh();
+    } else if (pluginId) {
+      startAutoRefresh(pluginId);
+    }
+  }, [isAutoRefreshEnabled, pluginId, startAutoRefresh, stopAutoRefresh]);
+
+  // Cleanup auto-refresh on unmount or when plugin changes
+  useEffect(() => {
+    return () => {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+      }
+    };
+  }, [autoRefreshInterval]);
+  // Stop auto-refresh when plugin changes
+  useEffect(() => {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+      setAutoRefreshInterval(null);
+      setIsAutoRefreshEnabled(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pluginId]);
+
+  // Load plugin files if pluginId is provided - ONLY ONCE
   useEffect(() => {
     if (pluginId && userId) {
       console.log(`VSCodeLayout: Loading plugin files for pluginName: ${pluginId}, userId: ${userId}`);
@@ -580,8 +646,7 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
               >
                 <RefreshCw className={`w-4 h-4 ${isLoadingPlugin ? 'animate-spin' : ''}`} />
               </Button>
-              
-              <Button 
+                <Button 
                 variant="ghost" 
                 size="sm" 
                 className="h-8 w-8 p-0" 
@@ -591,6 +656,28 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
               >
                 <RotateCcw className={`w-4 h-4 ${isLoadingPlugin ? 'animate-spin' : ''}`} />
               </Button>
+              
+              {/* Auto-refresh toggle */}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className={`h-8 w-8 p-0 ${isAutoRefreshEnabled ? 'bg-blue-100 text-blue-600' : ''}`}
+                title={isAutoRefreshEnabled ? "Stop Auto-refresh (2 min)" : "Start Auto-refresh (2 min)"}
+                onClick={toggleAutoRefresh}
+                disabled={isLoadingPlugin}
+              >
+                {isAutoRefreshEnabled ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              </Button>
+              
+              {/* Last refresh time indicator */}
+              {lastRefreshTime && (
+                <div className="flex items-center gap-1 text-xs text-gray-500 px-2">
+                  <Clock className="w-3 h-3" />
+                  <span title={`Last refreshed: ${lastRefreshTime.toLocaleString()}`}>
+                    {lastRefreshTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              )}
             </>
           )}
           

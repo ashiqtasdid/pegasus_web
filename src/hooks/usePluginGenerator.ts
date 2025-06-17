@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 interface FormData {
   prompt: string;
@@ -51,195 +51,18 @@ export function usePluginGenerator() {
   const [projectFiles, setProjectFiles] = useState<ProjectData | null>(null);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [projectStatus, setProjectStatus] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
-
-  // Function to extract plugin information from generation result
-  const extractPluginInfo = useCallback((result: string, prompt: string) => {
-    // Extract Minecraft version (look for common patterns)
-    const minecraftVersionMatch = result.match(/(?:minecraft|version|api)[\s:]*(\d+\.\d+(?:\.\d+)?)/i);
-    const minecraftVersion = minecraftVersionMatch ? minecraftVersionMatch[1] : '1.20.1';
-    
-    // Extract main class (look for common patterns)
-    const mainClassMatch = result.match(/main[:\s]+([A-Za-z][A-Za-z0-9_.]*)/i) || 
-                          result.match(/class\s+([A-Za-z][A-Za-z0-9_]*)\s+extends\s+JavaPlugin/i);
-    const mainClass = mainClassMatch ? mainClassMatch[1] : 'Main';
-    
-    // Extract API version
-    const apiVersionMatch = result.match(/api-version[:\s]*(['""]?)(\d+\.\d+)\1/i);
-    const apiVersion = apiVersionMatch ? apiVersionMatch[2] : '1.20';
-    
-    // Determine dependencies based on prompt content
-    const dependencies: string[] = [];
-    if (prompt.toLowerCase().includes('vault')) {
-      dependencies.push('Vault');
-    }
-    if (prompt.toLowerCase().includes('worldedit')) {
-      dependencies.push('WorldEdit');
-    }
-    if (prompt.toLowerCase().includes('citizens')) {
-      dependencies.push('Citizens');
-    }
-    
-    return {
-      minecraftVersion,
-      mainClass,
-      apiVersion,
-      dependencies,
-    };
-  }, []);
-  // Function to extract files from generation result
-  const extractFilesFromResult = useCallback((result: string, pluginName: string) => {
-    const files: Array<{ path: string; content: string; type: string }> = [];
-    
-    console.log('Extracting files from result. Result length:', result.length);
-    
-    try {
-      // Look for file markers in the result
-      const filePattern = /---\s*FILE:\s*([^\n]+)\s*---\n([\s\S]*?)(?=---\s*FILE:|$)/g;
-      let match;
-      let fileCount = 0;
-      
-      while ((match = filePattern.exec(result)) !== null) {
-        fileCount++;
-        const filePath = match[1].trim();
-        const content = match[2].trim();
-        
-        console.log(`Found file ${fileCount}: ${filePath} (content length: ${content.length})`);
-        
-        if (filePath && content) {
-          files.push({
-            path: filePath,
-            content: content,
-            type: filePath.endsWith('.java') ? 'java' : 
-                  filePath.endsWith('.yml') ? 'yaml' : 
-                  filePath.endsWith('.xml') ? 'xml' : 'text'
-          });
-        }
-      }
-      
-      console.log(`Total files extracted: ${files.length}`);
-      
-      // If no files found with FILE markers, try to extract main class
-      if (files.length === 0) {
-        console.log('No files found with FILE markers, trying to extract Java class');
-        // Look for Java class content
-        const javaClassPattern = /public class\s+(\w+)[\s\S]*?^}/gm;
-        const javaMatch = javaClassPattern.exec(result);
-        
-        if (javaMatch) {
-          const className = javaMatch[1];
-          const content = javaMatch[0];
-          console.log(`Found Java class: ${className}`);
-          files.push({
-            path: `src/main/java/com/example/${pluginName.toLowerCase()}/${className}.java`,
-            content: content,
-            type: 'java'
-          });
-        }
-        
-        // Look for plugin.yml content
-        const pluginYmlPattern = /name:\s*[\w\s]+\nversion:[\s\S]*?(?=\n\n|\n[^\s]|$)/g;
-        const ymlMatch = pluginYmlPattern.exec(result);
-        
-        if (ymlMatch) {
-          console.log('Found plugin.yml content');
-          files.push({
-            path: 'src/main/resources/plugin.yml',
-            content: ymlMatch[0],
-            type: 'yaml'
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error extracting files from result:', error);
-    }
-    
-    console.log('Final extracted files:', files.map(f => ({ path: f.path, contentLength: f.content.length })));
-    return files;
-  }, []);
-  // Function to save plugin to database
-  const savePluginToDatabase = useCallback(async (
-    project: CurrentProject, 
-    prompt: string, 
-    generationResult: string
-  ) => {
-    try {
-      console.log('Saving plugin to database:', project.pluginName);
-      
-      // Extract plugin information from the generation result
-      const pluginInfo = extractPluginInfo(generationResult, prompt);
-      
-      // Extract files from the generation result
-      const extractedFiles = extractFilesFromResult(generationResult, project.pluginName);
-      
-      console.log('Plugin info extracted:', pluginInfo);
-      console.log('Files extracted for database save:', extractedFiles.length);
-      
-      const pluginData = {
-        pluginName: project.pluginName,
-        description: prompt,
-        minecraftVersion: pluginInfo.minecraftVersion,
-        dependencies: pluginInfo.dependencies,
-        files: extractedFiles, // Now includes the actual generated files
-        metadata: {
-          mainClass: pluginInfo.mainClass,
-          version: '1.0.0',
-          apiVersion: pluginInfo.apiVersion,
-        },
-      };
-
-      console.log('Sending plugin data to API:', {
-        pluginName: pluginData.pluginName,
-        filesCount: pluginData.files.length,
-        filesPaths: pluginData.files.map(f => f.path)
-      });
-
-      const response = await fetch('/api/plugins', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(pluginData),
-      });
-
-      const result = await response.json();
-      
-      if (response.ok) {
-        console.log('✅ Plugin saved to database successfully:', result.plugin?._id);
-        console.log('Plugin data in database:', {
-          id: result.plugin?._id,
-          name: result.plugin?.pluginName,
-          filesCount: result.plugin?.files?.length || 0
-        });
-        // Dispatch custom event for notifications
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('plugin-saved', {
-            detail: { plugin: result.plugin }
-          }));
-        }
-      } else {
-        console.error('❌ Failed to save plugin:', result.error);
-        // Dispatch error event
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('plugin-save-error', {
-            detail: { error: result.error }
-          }));        }
-      }
-    } catch (error) {
-      console.error('Error saving plugin to database:', error);
-      // Dispatch error event
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('plugin-save-error', {
-          detail: { error: 'Network error saving plugin' }
-        }));
-      }    }
-  }, [extractPluginInfo, extractFilesFromResult]);
-
-  const loadProjectFiles = useCallback(async (userId: string, pluginName: string) => {
+  const loadProjectFiles = useCallback(async (userId: string, pluginName: string, isAutoRefresh = false) => {
     if (!userId || !pluginName) return;
 
     try {
-      const response = await fetch(`${apiBase}/plugin/read`, {
+      if (!isAutoRefresh) {
+        console.log('Loading project files for:', { userId, pluginName });
+      }
+
+      const response = await fetch('/api/plugin/files', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -251,13 +74,96 @@ export function usePluginGenerator() {
         throw new Error(`Failed to load project files: ${response.statusText}`);
       }
 
-      const projectData = await response.json();
-      setProjectFiles(projectData);
+      const data = await response.json();
+      
+      if (data.success && data.files) {
+        // Convert files object to project structure
+        const files: ProjectFile[] = Object.entries(data.files).map(([path, content]) => ({
+          path,
+          content: content as string
+        }));
+
+        const projectData: ProjectData = {
+          projectExists: true,
+          pluginProject: {
+            projectName: pluginName,
+            minecraftVersion: data.metadata?.minecraftVersion || '1.20.1',
+            dependencies: data.metadata?.dependencies || [],
+            files
+          }
+        };
+
+        setProjectFiles(projectData);
+        setLastRefresh(new Date());
+        
+        if (!isAutoRefresh) {
+          console.log('Loaded project files from MongoDB:', files.length, 'files');
+          console.log('Plugin metadata:', data.metadata);
+        }
+        
+        // Dispatch event for file refresh
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('plugin-files-refreshed', {
+            detail: {
+              pluginName,
+              userId,
+              filesCount: files.length,
+              isAutoRefresh,
+              lastRefresh: new Date(),
+              metadata: data.metadata
+            }
+          }));
+        }
+      } else {
+        if (!isAutoRefresh) {
+          console.log('No files found for plugin:', pluginName);
+        }
+        setProjectFiles({
+          projectExists: false
+        });
+      }
 
     } catch (error) {
-      console.error('Error loading project files:', error);
+      if (!isAutoRefresh) {
+        console.error('Error loading project files:', error);
+      }
+      setProjectFiles({
+        projectExists: false
+      });
     }
-  }, [apiBase]);
+  }, []);
+
+  // Setup auto-refresh functionality
+  const startAutoRefresh = useCallback((userId: string, pluginName: string) => {
+    // Clear existing interval
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+    }
+
+    // Set up new interval for 2 minutes (120000ms)
+    refreshIntervalRef.current = setInterval(() => {
+      loadProjectFiles(userId, pluginName, true);
+    }, 120000); // 2 minutes
+
+    console.log('Auto-refresh started for plugin:', pluginName, '(every 2 minutes)');
+  }, [loadProjectFiles]);
+
+  const stopAutoRefresh = useCallback(() => {
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+      console.log('Auto-refresh stopped');
+    }
+  }, []);
+
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, []);
 
   const generatePlugin = useCallback(async (data: FormData) => {
     const requestData = {
@@ -296,9 +202,6 @@ export function usePluginGenerator() {
       };
       setCurrentProject(newProject);      // Load project files if generation was successful
       if (result.includes('COMPILATION SUCCESSFUL') || result.includes('Plugin project generated')) {
-        // Save plugin to database
-        await savePluginToDatabase(newProject, data.prompt, result);
-        
         // Dispatch event to notify about plugin generation
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('plugin-generated', {
@@ -310,8 +213,15 @@ export function usePluginGenerator() {
           }));
         }
         
+        // Note: Plugin files are now handled by MongoDB
+        // No local database saving is performed
+        console.log('✅ Plugin generated successfully:', newProject.pluginName);
+        console.log('MongoDB will handle plugin file persistence');
+        
+        // Load files and start auto-refresh
         setTimeout(() => {
           loadProjectFiles(newProject.userId, newProject.pluginName);
+          startAutoRefresh(newProject.userId, newProject.pluginName);
         }, 1000);
       }
 
@@ -325,7 +235,7 @@ export function usePluginGenerator() {
       });    } finally {
       setIsLoading(false);
     }
-  }, [apiBase, loadProjectFiles, savePluginToDatabase]);
+  }, [apiBase, loadProjectFiles, startAutoRefresh]);
 
   const downloadJar = useCallback(async (userId: string, pluginName: string) => {
     try {
@@ -558,7 +468,6 @@ For support or modifications, refer to the generated source code.
     const match = result.match(/Project: ([^\n]+)/);
     return match ? match[1].trim() : 'GeneratedPlugin';
   };
-
   return {
     isLoading,
     results,
@@ -566,6 +475,7 @@ For support or modifications, refer to the generated source code.
     projectFiles,
     chatMessages,
     projectStatus,
+    lastRefresh,
     generatePlugin,
     downloadJar,
     downloadInstructions,
@@ -573,6 +483,8 @@ For support or modifications, refer to the generated source code.
     checkExistingProject,
     sendChatMessage,
     clearChat,
-    addChatMessage
+    addChatMessage,
+    startAutoRefresh,
+    stopAutoRefresh
   };
 }

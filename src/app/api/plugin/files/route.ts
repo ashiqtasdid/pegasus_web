@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { pluginService } from '@/lib/plugin-service';
+import { MongoClient } from 'mongodb';
+
+const MONGODB_URI = process.env.MONGODB_URI!;
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,79 +17,57 @@ export async function POST(request: NextRequest) {
 
     console.log('Plugin files API called:', { userId, pluginName });
 
-    // First, try to get the plugin from local database
+    // Connect to MongoDB and fetch plugin files
+    const client = new MongoClient(MONGODB_URI);
+    
     try {
-      const plugin = await pluginService.getPluginByName(userId, pluginName);
+      await client.connect();
+      const db = client.db();
+      const collection = db.collection('plugins'); // Adjust collection name if needed
+      
+      // Find the plugin document by userId and pluginName
+      const plugin = await collection.findOne({
+        userId: userId,
+        pluginName: pluginName,
+        isActive: true
+      });
       
       if (plugin && plugin.files && plugin.files.length > 0) {
-        console.log('Found plugin in local database:', plugin.pluginName, 'with', plugin.files.length, 'files');
-        
-        // Convert database format to API format
+        console.log('Found plugin in MongoDB:', plugin.pluginName, 'with', plugin.files.length, 'files');
+          // Convert MongoDB format to API format
         const files: Record<string, string> = {};
-        plugin.files.forEach(file => {
+        plugin.files.forEach((file: { path: string; content: string }) => {
           files[file.path] = file.content;
         });
         
         return NextResponse.json({
           success: true,
-          files
+          files,
+          metadata: {
+            pluginName: plugin.pluginName,
+            minecraftVersion: plugin.minecraftVersion,
+            dependencies: plugin.dependencies,
+            totalFiles: plugin.metadata?.totalFiles || plugin.files.length,
+            totalSize: plugin.metadata?.totalSize || 0,
+            lastSyncedAt: plugin.metadata?.lastSyncedAt,
+            updatedAt: plugin.updatedAt
+          }
         });
       } else {
-        console.log('Plugin not found in local database or has no files');
-      }
-    } catch (dbError) {
-      console.error('Database error:', dbError);
-      // Continue to try external backend
-    }    // If not found in database, try external backend as fallback
-    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
-    
-    if (!apiBase || apiBase.includes('your-backend-service')) {
-      console.error('No plugin found in database and backend API not configured');
-      return NextResponse.json({
-        success: false,
-        error: 'Plugin not found in local database and external backend API is not configured'
-      }, { status: 404 });
-    }
-
-    try {
-      // Forward request to external backend
-      const backendUrl = `${apiBase}/plugin/files`;
-      console.log('Trying external backend:', backendUrl);
-      
-      const backendResponse = await fetch(backendUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          pluginName
-        }),
-        signal: AbortSignal.timeout(30000) // 30 second timeout
-      });
-
-      console.log('Backend response status:', backendResponse.status);
-      const data = await backendResponse.json();
-      console.log('Backend response data:', data);
-
-      if (backendResponse.ok) {
-        // Return the backend response as-is (should match the expected format)
-        return NextResponse.json(data);
-      } else {
-        console.error('Backend API error:', backendResponse.status, data);
+        console.log('Plugin not found in MongoDB or has no files');
         return NextResponse.json({
           success: false,
-          error: data.error || `Plugin not found in database or external backend`
+          error: 'Plugin not found in MongoDB'
         }, { status: 404 });
       }
-
-    } catch (error) {
-      console.error('Error calling backend API:', error);
-      
+    } catch (dbError) {
+      console.error('MongoDB error:', dbError);
       return NextResponse.json({
         success: false,
-        error: `Plugin not found in local database and external backend is unavailable`
-      }, { status: 404 });
+        error: 'Database error occurred'
+      }, { status: 500 });
+    } finally {
+      await client.close();
     }
 
   } catch (error) {

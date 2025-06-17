@@ -88,16 +88,61 @@ export async function GET(request: NextRequest) {
 
     if (!isDevelopmentMode && !session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }    // Use session user ID or default test user ID for development
+    }    
+    // Use session user ID or default test user ID for development
     const userId = session?.user?.id || 'testuser';
+    
+    console.log('Plugins list API called for userId:', userId);
 
-    // Get user's plugins
-    const plugins = await pluginService.getPluginsByUserId(userId);
+    // Connect to MongoDB and get user's plugins
+    const { MongoClient } = await import('mongodb');
+    const MONGODB_URI = process.env.MONGODB_URI!;
+    const client = new MongoClient(MONGODB_URI);
+    
+    try {
+      await client.connect();
+      const db = client.db();
+      const collection = db.collection('plugins');
+      
+      // Find all plugins for the user
+      const plugins = await collection.find({
+        userId: userId,
+        isActive: true
+      }).sort({ updatedAt: -1 }).toArray();
+      
+      console.log('Found', plugins.length, 'plugins for user:', userId);
+      
+      // Transform to match expected format
+      const transformedPlugins = plugins.map(plugin => ({
+        _id: plugin._id.toString(),
+        userId: plugin.userId,
+        pluginName: plugin.pluginName,
+        description: plugin.description,
+        minecraftVersion: plugin.minecraftVersion,
+        dependencies: plugin.dependencies,
+        files: plugin.files || [],
+        metadata: plugin.metadata,
+        createdAt: plugin.createdAt,
+        updatedAt: plugin.updatedAt,
+        isActive: plugin.isActive
+      }));
 
-    return NextResponse.json({
-      success: true,
-      plugins,
-    });
+      return NextResponse.json({
+        success: true,
+        plugins: transformedPlugins,
+        count: transformedPlugins.length,
+        userId
+      });
+      
+    } catch (dbError) {
+      console.error('MongoDB error:', dbError);
+      return NextResponse.json({
+        success: false,
+        error: 'Database error occurred'
+      }, { status: 500 });
+    } finally {
+      await client.close();
+    }
 
   } catch (error) {
     console.error('Error fetching plugins:', error);

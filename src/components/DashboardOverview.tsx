@@ -44,31 +44,48 @@ interface PluginFile {
   type: string;
 }
 
+interface RecentPlugin {
+  id: string;
+  pluginName: string;
+  description?: string;
+  minecraftVersion?: string;
+  createdAt: string;
+  filesCount: number;
+}
+
 interface PluginStats {
   totalPlugins: number;
-  recentPlugins: Plugin[];
+  recentPlugins: number;
   favoriteMinecraftVersions: string[];
+  recentPluginsList: RecentPlugin[];
 }
 
 export function DashboardOverview() {
   const router = useRouter();
   const [plugins, setPlugins] = useState<Plugin[]>([]);
   const [stats, setStats] = useState<PluginStats | null>(null);
+  const [userId, setUserId] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadPlugins();
     loadStats();
   }, []);
-
   const loadPlugins = async () => {
     try {
+      setIsLoading(true);
       const response = await fetch('/api/plugins');
       const data = await response.json();
       
       if (response.ok) {
-        setPlugins(data.plugins);      }
+        setPlugins(data.plugins);
+        setUserId(data.userId || 'testuser');
+        console.log('Loaded plugins for user:', data.userId, 'Count:', data.count);
+      }
     } catch (err) {
       console.error('Error loading plugins:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -79,6 +96,7 @@ export function DashboardOverview() {
       
       if (response.ok) {
         setStats(data.stats);
+        console.log('Loaded stats:', data.stats);
       }
     } catch (err) {
       console.error('Error loading stats:', err);
@@ -94,8 +112,7 @@ export function DashboardOverview() {
   };
 
   return (
-    <div className="space-y-8 p-6">
-      {/* Welcome Header */}
+    <div className="space-y-8 p-6">      {/* Welcome Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
@@ -104,6 +121,31 @@ export function DashboardOverview() {
           <p className="text-lg text-muted-foreground">
             AI-powered Minecraft plugin development platform
           </p>
+          {/* User ID and Plugin Count Display */}
+          <div className="flex items-center gap-4 mt-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                User: {userId || 'Loading...'}
+              </span>
+            </div>
+            {!isLoading && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+                <Package className="h-4 w-4 text-green-600 dark:text-green-400" />
+                <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                  {stats?.totalPlugins || 0} Plugin{(stats?.totalPlugins || 0) !== 1 ? 's' : ''} Generated
+                </span>
+              </div>
+            )}
+            {isLoading && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-950 rounded-lg border border-gray-200 dark:border-gray-800">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Loading plugins...
+                </span>
+              </div>
+            )}
+          </div>
         </div>
         <Badge variant="secondary" className="gap-1.5 px-3 py-1 text-sm">
           <Rocket className="h-4 w-4" />
@@ -131,10 +173,9 @@ export function DashboardOverview() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Recent Activity</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-2">
+          <CardContent>            <div className="flex items-center space-x-2">
               <TrendingUp className="h-4 w-4 text-green-500" />
-              <span className="text-2xl font-bold">{stats?.recentPlugins?.length || 0}</span>
+              <span className="text-2xl font-bold">{stats?.recentPlugins || 0}</span>
             </div>
           </CardContent>
         </Card>
@@ -228,15 +269,13 @@ export function DashboardOverview() {
             )}
           </CardContent>
         </Card>
-      </div>
-
-      {/* Recent Activity */}
-      {stats?.recentPlugins && stats.recentPlugins.length > 0 && (
+      </div>      {/* Recent Activity */}
+      {stats?.recentPluginsList && stats.recentPluginsList.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">Recent Activity</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {stats.recentPlugins.map((plugin) => (
-              <Card key={plugin._id} className="border-0 shadow-lg bg-card/50 backdrop-blur-sm hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => handleEditPlugin(plugin._id)}>
+            {stats.recentPluginsList.map((plugin) => (
+              <Card key={plugin.id} className="border-0 shadow-lg bg-card/50 backdrop-blur-sm hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => handleEditPlugin(plugin.id)}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">{plugin.pluginName}</CardTitle>
@@ -252,11 +291,11 @@ export function DashboardOverview() {
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <div className="flex items-center space-x-1">
                       <Calendar className="h-3 w-3" />
-                      <span>{new Date(plugin.updatedAt).toLocaleDateString()}</span>
+                      <span>{new Date(plugin.createdAt).toLocaleDateString()}</span>
                     </div>
                     <div className="flex items-center space-x-1">
                       <FileText className="h-3 w-3" />
-                      <span>{plugin.files?.length || 0} files</span>
+                      <span>{plugin.filesCount || 0} files</span>
                     </div>
                   </div>
                 </CardContent>
