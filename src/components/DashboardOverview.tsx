@@ -17,8 +17,7 @@ import {
   ChevronRight,
   Calendar,
   TrendingUp,
-  Download,
-  ExternalLink
+  Download
 } from 'lucide-react';
 import { usePluginGenerator } from '@/hooks/usePluginGenerator';
 
@@ -306,17 +305,13 @@ export function DashboardOverview() {
                       <FileText className="h-3 w-3" />
                       <span>{plugin.filesCount || 0} files</span>
                     </div>
-                  </div>
-                  {/* Download JAR button */}
+                  </div>                  {/* Download JAR button */}
                   <Button
                     size="sm"
                     variant="outline"
                     className="absolute top-2 right-2 z-10"
                     title="Download JAR"
-                    onClick={e => {
-                      e.stopPropagation();
-                      downloadJar(userId, plugin.pluginName);
-                    }}
+                    onClick={e => handleDownloadJar(e, plugin.pluginName)}
                   >
                     <Download className="h-4 w-4 mr-1" />
                     JAR
