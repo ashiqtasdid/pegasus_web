@@ -132,7 +132,7 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
         pluginName: pluginName
       };
 
-      const response = await fetch('/api/plugin/read', {
+      const response = await fetch('/api/plugin/files', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -142,20 +142,19 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
       const data = await response.json();
       
       console.log('API Response Status:', response.status, response.ok);
-      console.log('API Response Data:', data);
-        if (response.ok && data.projectExists && data.pluginProject?.files) {
+      console.log('API Response Data:', data);      if (response.ok && data.success && data.files) {
         console.log('✅ Plugin files loaded successfully');
-        console.log('📁 Raw files data:', data.pluginProject.files);        
+        console.log('📁 Raw files data:', data.files);        
         // Update refs for cache tracking
         lastLoadedPluginIdRef.current = pluginName;
         hasLoadedRef.current.add(cacheKey); // Mark as loaded
         
-        const files = data.pluginProject.files;
-        console.log('📁 Files count:', files.length);
+        const fileEntries = Object.entries(data.files);
+        console.log('📁 Files count:', fileEntries.length);
         
-        if (files.length > 0) {
+        if (fileEntries.length > 0) {
           // Convert backend files format to FileNode format
-          const fileNodes: FileNode[] = files.map((file: {path: string, content: string}) => {
+          const fileNodes: FileNode[] = fileEntries.map(([filePath, content]) => {
             const getLanguageFromPath = (path: string): string => {
               const extension = path.split('.').pop()?.toLowerCase();
               switch (extension) {
@@ -176,12 +175,12 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
                 default: return 'text';
               }
             };            return {
-              id: file.path,
-              name: file.path.split('/').pop() || file.path,
+              id: filePath,
+              name: filePath.split('/').pop() || filePath,
               type: 'file' as const,
-              content: file.content,
-              path: file.path,
-              language: getLanguageFromPath(file.path)
+              content: content as string,
+              path: filePath,
+              language: getLanguageFromPath(filePath)
             };
           });
             console.log('📦 Converted file nodes:', fileNodes);
@@ -213,8 +212,8 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
         console.error('❌ Plugin load error:');
         console.error('Response OK:', response.ok);
         console.error('Data:', data);
-        console.error('Project exists:', !!data?.projectExists);
-        console.error('Has files:', !!data?.pluginProject?.files);
+        console.error('Has success:', !!data?.success);
+        console.error('Has files:', !!data?.files);
         showErrorRef.current('Load Failed', data.error || 'Failed to load plugin files');
       }
     } catch (error) {
