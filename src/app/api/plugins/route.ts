@@ -35,9 +35,7 @@ export async function POST(request: NextRequest) {
         { error: 'A plugin with this name already exists' },
         { status: 409 }
       );
-    }
-
-    // Create plugin data
+    }    // Create plugin data
     const pluginData: CreatePluginData = {
       userId: userId,
       pluginName,
@@ -48,9 +46,16 @@ export async function POST(request: NextRequest) {
       metadata: {
         author: userName,
         version: '1.0.0',
-        ...metadata,
-      },
+        ...metadata
+      }
     };
+
+    console.log('Creating plugin with data:', {
+      userId,
+      pluginName,
+      filesCount: files?.length || 0,
+      files: files?.map((f: any) => ({ path: f.path, contentLength: f.content?.length || 0 })) || []
+    });
 
     // Save plugin to database
     const plugin = await pluginService.createPlugin(pluginData);

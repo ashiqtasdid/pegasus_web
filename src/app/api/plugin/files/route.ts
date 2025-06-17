@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { pluginService } from '@/lib/plugin-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,21 +11,48 @@ export async function POST(request: NextRequest) {
         success: false,
         error: 'userId and pluginName are required'
       }, { status: 400 });
-    }    // Check if external backend is configured
+    }
+
+    console.log('Plugin files API called:', { userId, pluginName });
+
+    // First, try to get the plugin from local database
+    try {
+      const plugin = await pluginService.getPluginByName(userId, pluginName);
+      
+      if (plugin && plugin.files && plugin.files.length > 0) {
+        console.log('Found plugin in local database:', plugin.pluginName, 'with', plugin.files.length, 'files');
+        
+        // Convert database format to API format
+        const files: Record<string, string> = {};
+        plugin.files.forEach(file => {
+          files[file.path] = file.content;
+        });
+        
+        return NextResponse.json({
+          success: true,
+          files
+        });
+      } else {
+        console.log('Plugin not found in local database or has no files');
+      }
+    } catch (dbError) {
+      console.error('Database error:', dbError);
+      // Continue to try external backend
+    }    // If not found in database, try external backend as fallback
     const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
     
-    console.log('Plugin files API called:', { userId, pluginName, apiBase });
-    
     if (!apiBase || apiBase.includes('your-backend-service')) {
-      console.error('Backend API not configured');
+      console.error('No plugin found in database and backend API not configured');
       return NextResponse.json({
         success: false,
-        error: 'Backend API not configured. Please set NEXT_PUBLIC_API_BASE_URL environment variable.'
-      }, { status: 503 });
-    }    try {
+        error: 'Plugin not found in local database and external backend API is not configured'
+      }, { status: 404 });
+    }
+
+    try {
       // Forward request to external backend
       const backendUrl = `${apiBase}/plugin/files`;
-      console.log('Calling backend API:', backendUrl);
+      console.log('Trying external backend:', backendUrl);
       
       const backendResponse = await fetch(backendUrl, {
         method: 'POST',
@@ -49,24 +77,17 @@ export async function POST(request: NextRequest) {
         console.error('Backend API error:', backendResponse.status, data);
         return NextResponse.json({
           success: false,
-          error: data.error || `Backend API returned ${backendResponse.status}: ${backendResponse.statusText}`
-        }, { status: backendResponse.status });
+          error: data.error || `Plugin not found in database or external backend`
+        }, { status: 404 });
       }
 
     } catch (error) {
       console.error('Error calling backend API:', error);
       
-      if (error instanceof Error && error.name === 'AbortError') {
-        return NextResponse.json({
-          success: false,
-          error: 'Request timeout - backend took too long to respond'
-        }, { status: 504 });
-      }
-
       return NextResponse.json({
         success: false,
-        error: `Failed to connect to backend service: ${error instanceof Error ? error.message : 'Unknown error'}`
-      }, { status: 503 });
+        error: `Plugin not found in local database and external backend is unavailable`
+      }, { status: 404 });
     }
 
   } catch (error) {

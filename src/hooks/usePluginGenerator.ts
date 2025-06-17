@@ -87,19 +87,24 @@ export function usePluginGenerator() {
       dependencies,
     };
   }, []);
-
   // Function to extract files from generation result
   const extractFilesFromResult = useCallback((result: string, pluginName: string) => {
     const files: Array<{ path: string; content: string; type: string }> = [];
+    
+    console.log('Extracting files from result. Result length:', result.length);
     
     try {
       // Look for file markers in the result
       const filePattern = /---\s*FILE:\s*([^\n]+)\s*---\n([\s\S]*?)(?=---\s*FILE:|$)/g;
       let match;
+      let fileCount = 0;
       
       while ((match = filePattern.exec(result)) !== null) {
+        fileCount++;
         const filePath = match[1].trim();
         const content = match[2].trim();
+        
+        console.log(`Found file ${fileCount}: ${filePath} (content length: ${content.length})`);
         
         if (filePath && content) {
           files.push({
@@ -112,8 +117,11 @@ export function usePluginGenerator() {
         }
       }
       
+      console.log(`Total files extracted: ${files.length}`);
+      
       // If no files found with FILE markers, try to extract main class
       if (files.length === 0) {
+        console.log('No files found with FILE markers, trying to extract Java class');
         // Look for Java class content
         const javaClassPattern = /public class\s+(\w+)[\s\S]*?^}/gm;
         const javaMatch = javaClassPattern.exec(result);
@@ -121,6 +129,7 @@ export function usePluginGenerator() {
         if (javaMatch) {
           const className = javaMatch[1];
           const content = javaMatch[0];
+          console.log(`Found Java class: ${className}`);
           files.push({
             path: `src/main/java/com/example/${pluginName.toLowerCase()}/${className}.java`,
             content: content,
@@ -133,6 +142,7 @@ export function usePluginGenerator() {
         const ymlMatch = pluginYmlPattern.exec(result);
         
         if (ymlMatch) {
+          console.log('Found plugin.yml content');
           files.push({
             path: 'src/main/resources/plugin.yml',
             content: ymlMatch[0],
@@ -144,9 +154,9 @@ export function usePluginGenerator() {
       console.error('Error extracting files from result:', error);
     }
     
+    console.log('Final extracted files:', files.map(f => ({ path: f.path, contentLength: f.content.length })));
     return files;
   }, []);
-
   // Function to save plugin to database
   const savePluginToDatabase = useCallback(async (
     project: CurrentProject, 
@@ -154,11 +164,16 @@ export function usePluginGenerator() {
     generationResult: string
   ) => {
     try {
+      console.log('Saving plugin to database:', project.pluginName);
+      
       // Extract plugin information from the generation result
       const pluginInfo = extractPluginInfo(generationResult, prompt);
       
       // Extract files from the generation result
       const extractedFiles = extractFilesFromResult(generationResult, project.pluginName);
+      
+      console.log('Plugin info extracted:', pluginInfo);
+      console.log('Files extracted for database save:', extractedFiles.length);
       
       const pluginData = {
         pluginName: project.pluginName,
@@ -173,6 +188,12 @@ export function usePluginGenerator() {
         },
       };
 
+      console.log('Sending plugin data to API:', {
+        pluginName: pluginData.pluginName,
+        filesCount: pluginData.files.length,
+        filesPaths: pluginData.files.map(f => f.path)
+      });
+
       const response = await fetch('/api/plugins', {
         method: 'POST',
         headers: {
@@ -184,7 +205,12 @@ export function usePluginGenerator() {
       const result = await response.json();
       
       if (response.ok) {
-        console.log('Plugin saved to database:', result.plugin);
+        console.log('✅ Plugin saved to database successfully:', result.plugin?._id);
+        console.log('Plugin data in database:', {
+          id: result.plugin?._id,
+          name: result.plugin?.pluginName,
+          filesCount: result.plugin?.files?.length || 0
+        });
         // Dispatch custom event for notifications
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('plugin-saved', {
@@ -192,7 +218,7 @@ export function usePluginGenerator() {
           }));
         }
       } else {
-        console.error('Failed to save plugin:', result.error);
+        console.error('❌ Failed to save plugin:', result.error);
         // Dispatch error event
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('plugin-save-error', {
