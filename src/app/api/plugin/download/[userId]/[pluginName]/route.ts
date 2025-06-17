@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string; pluginName: string } }
+  { params }: { params: Promise<{ userId: string; pluginName: string }> }
 ) {
   try {
     // Check if we're in development mode
@@ -18,7 +18,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { userId, pluginName } = params;
+    const { userId, pluginName } = await params;
     
     if (!userId || !pluginName) {
       return NextResponse.json(

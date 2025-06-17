@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Enable standalone output for Docker deployment
-  output: 'standalone',
+  // Enable standalone output for Docker deployment only
+  ...(process.env.NODE_ENV === 'production' && process.env.DOCKER_BUILD === 'true' ? { output: 'standalone' } : {}),
   
   // Disable source maps in development to avoid 404 errors
   productionBrowserSourceMaps: false,
