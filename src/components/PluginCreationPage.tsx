@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from '@/lib/auth-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,26 +20,45 @@ import {
   Loader2,
   Sparkles,
   Code,
-  Package
+  Package,
+  Download
 } from 'lucide-react';
 
 export function PluginCreationPage() {
   const router = useRouter();
-  const {
+  const { data: session, isPending } = useSession();  const {
     isLoading,
     results,
     generatePlugin,
-    currentProject
+    currentProject,
+    downloadJar
   } = usePluginGenerator();
+  
   const [formData, setFormData] = useState({
     pluginName: '',
     description: '',
     minecraftVersion: '1.20.1',
     prompt: '',
-    userId: 'testuser' // In real app, get from auth
+    userId: ''
   });
 
   const [step, setStep] = useState<'form' | 'generating' | 'success'>('form');
+
+  // Update userId when session is available
+  useEffect(() => {
+    if (session?.user?.id) {
+      setFormData(prev => ({
+        ...prev,
+        userId: session.user.id
+      }));
+    } else if (!isPending) {
+      // Fallback to testuser for development mode
+      setFormData(prev => ({
+        ...prev,
+        userId: 'testuser'
+      }));
+    }
+  }, [session, isPending]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -67,6 +87,11 @@ export function PluginCreationPage() {
     } catch (error) {
       console.error('Error generating plugin:', error);
       setStep('form');
+    }
+  };
+  const handleDownloadJar = async () => {
+    if (currentProject) {
+      await downloadJar(currentProject.userId, currentProject.pluginName);
     }
   };
 
@@ -168,12 +193,15 @@ export function PluginCreationPage() {
                     <p><span className="font-medium">Generated:</span> {new Date().toLocaleString()}</p>
                   </div>
                 </div>
-              )}
-
-              <div className="flex flex-col space-y-3">
+              )}              <div className="flex flex-col space-y-3">
                 <Button size="lg" onClick={handleGoToEditor} className="w-full">
                   <Code className="h-5 w-5 mr-2" />
                   Take Me to the Editor
+                </Button>
+                
+                <Button size="lg" onClick={handleDownloadJar} variant="outline" className="w-full">
+                  <Download className="h-5 w-5 mr-2" />
+                  Download JAR File
                 </Button>
                 
                 <Button variant="outline" onClick={handleBackToDashboard} className="w-full">

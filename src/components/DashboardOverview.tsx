@@ -16,8 +16,11 @@ import {
   Rocket,
   ChevronRight,
   Calendar,
-  TrendingUp
+  TrendingUp,
+  Download,
+  ExternalLink
 } from 'lucide-react';
+import { usePluginGenerator } from '@/hooks/usePluginGenerator';
 
 interface Plugin {
   _id: string;
@@ -62,6 +65,7 @@ interface PluginStats {
 
 export function DashboardOverview() {
   const router = useRouter();
+  const { downloadJar } = usePluginGenerator();
   const [plugins, setPlugins] = useState<Plugin[]>([]);
   const [stats, setStats] = useState<PluginStats | null>(null);
   const [userId, setUserId] = useState<string>('');
@@ -106,9 +110,14 @@ export function DashboardOverview() {
   const handleCreateNewPlugin = () => {
     router.push('/dashboard/create');
   };
-
   const handleEditPlugin = (pluginId: string) => {
     router.push(`/dashboard/editor?plugin=${pluginId}`);
+  };
+
+  const handleDownloadJar = async (e: React.MouseEvent, pluginName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await downloadJar(userId, pluginName);
   };
 
   return (
@@ -275,7 +284,7 @@ export function DashboardOverview() {
           <h2 className="text-2xl font-bold">Recent Activity</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {stats.recentPluginsList.map((plugin) => (
-              <Card key={plugin.id} className="border-0 shadow-lg bg-card/50 backdrop-blur-sm hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => handleEditPlugin(plugin.id)}>
+              <Card key={plugin.id} className="border-0 shadow-lg bg-card/50 backdrop-blur-sm hover:shadow-xl transition-all duration-300 cursor-pointer relative" onClick={() => handleEditPlugin(plugin.id)}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">{plugin.pluginName}</CardTitle>
@@ -298,6 +307,20 @@ export function DashboardOverview() {
                       <span>{plugin.filesCount || 0} files</span>
                     </div>
                   </div>
+                  {/* Download JAR button */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="absolute top-2 right-2 z-10"
+                    title="Download JAR"
+                    onClick={e => {
+                      e.stopPropagation();
+                      downloadJar(userId, plugin.pluginName);
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    JAR
+                  </Button>
                 </CardContent>
               </Card>
             ))}

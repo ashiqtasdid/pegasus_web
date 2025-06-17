@@ -236,11 +236,10 @@ export function usePluginGenerator() {
       setIsLoading(false);
     }
   }, [apiBase, loadProjectFiles, startAutoRefresh]);
-
   const downloadJar = useCallback(async (userId: string, pluginName: string) => {
     try {
       // Check if JAR is available
-      const response = await fetch(`${apiBase}/plugin/download-info/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`);
+      const response = await fetch(`/api/plugin/download-info/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`);
       const downloadInfo = await response.json();
       
       if (!response.ok || !downloadInfo.available) {
@@ -249,11 +248,11 @@ export function usePluginGenerator() {
       }
       
       // Start download
-      const downloadUrl = `${apiBase}/plugin/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`;
+      const downloadUrl = `/api/plugin/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`;
       
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.download = downloadInfo.jarFile;
+      link.download = downloadInfo.jarFile || `${pluginName}.jar`;
       link.style.display = 'none';
       
       document.body.appendChild(link);
@@ -264,7 +263,7 @@ export function usePluginGenerator() {
       console.error('Download error:', error);
       alert(`Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [apiBase]);
+  }, []);
 
   const downloadInstructions = useCallback(() => {
     const instructions = `
