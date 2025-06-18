@@ -370,8 +370,7 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
       console.log('🔵 Sending request to:', `${apiBase}/chat/message`);
-      
-      const response = await fetch(`${apiBase}/chat/message`, {
+        const response = await fetch(`${apiBase}/chat/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -381,8 +380,8 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
           username: userId || 'anonymous',
           pluginName: pluginId || null
         }),
-        // Add timeout to prevent hanging
-        signal: AbortSignal.timeout(30000) // 30 second timeout
+        // Add timeout to prevent hanging - extended for AI processing
+        signal: AbortSignal.timeout(130000) // 130 second timeout (longer than backend's 120s)
       });
 
       if (!response.ok) {

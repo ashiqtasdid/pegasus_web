@@ -123,8 +123,8 @@ export function DashboardOverview() {
   const handleCreatePlugin = (data: { prompt: string; userId: string; pluginName?: string }) => {
     generatePlugin(data);
     // Don't close modal immediately - let the modal handle its own state based on generation events
-  };  const handleEditPlugin = (pluginId: string) => {
-    router.push(`/dashboard/editor?plugin=${pluginId}&userId=${encodeURIComponent(currentUserId)}`);
+  };  const handleEditPlugin = (pluginName: string) => {
+    router.push(`/dashboard/editor?plugin=${pluginName}&userId=${encodeURIComponent(currentUserId)}`);
   };const handleDownloadJar = async (e: React.MouseEvent, pluginName: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -300,7 +300,7 @@ export function DashboardOverview() {
                     <Button 
                       size="sm" 
                       variant="default" 
-                      onClick={() => handleEditPlugin(plugin._id)}
+                      onClick={() => handleEditPlugin(plugin.pluginName)}
                       className="flex-1"
                     >
                       <Edit className="h-4 w-4 mr-1" />

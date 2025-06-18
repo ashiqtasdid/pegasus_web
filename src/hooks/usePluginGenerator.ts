@@ -379,7 +379,6 @@ For support or modifications, refer to the generated source code.
         </div>      `);
     }
   }, [apiBase]);
-
   const sendChatMessage = useCallback(async (message: string) => {
     // Add user message immediately
     const userMessage: Message = {
@@ -389,8 +388,7 @@ For support or modifications, refer to the generated source code.
     };
     setChatMessages(prev => [...prev, userMessage]);
 
-    try {
-      const response = await fetch(`${apiBase}/chat/message`, {
+    try {      const response = await fetch('/api/chat/message', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -399,7 +397,8 @@ For support or modifications, refer to the generated source code.
           message: message,
           username: currentProject?.userId || 'anonymous',
           pluginName: currentProject?.pluginName || null
-        })
+        }),
+        signal: AbortSignal.timeout(130000) // 130 second timeout (slightly longer than backend)
       });
 
       const data = await response.json();      if (data.success) {

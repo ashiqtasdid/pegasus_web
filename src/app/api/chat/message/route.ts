@@ -33,8 +33,7 @@ export async function POST(request: NextRequest) {
     
     if (apiBase && !apiBase.includes('your-backend-service')) {
       // Try to forward to external backend
-      try {
-        const response = await fetch(`${apiBase}/chat/message`, {
+      try {        const response = await fetch(`${apiBase}/chat/message`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -43,7 +42,7 @@ export async function POST(request: NextRequest) {
             username: actualUserId,
             pluginName
           }),
-          signal: AbortSignal.timeout(25000) // 25 second timeout
+          signal: AbortSignal.timeout(120000) // 120 second timeout (2 minutes) for AI processing
         });
 
         if (response.ok) {
