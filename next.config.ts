@@ -18,41 +18,14 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       allowedOrigins: [
-        'localhost:3000', 
-        '0.0.0.0:3000',
+        'localhost:3001', 
+        '0.0.0.0:3001',
         '37.114.41.124:3000',
-        'localhost:3001',
+        'localhost:3000',
         '37.114.41.124:3001', // Allow requests to external API
       ]
     }
   },
-  
-  // Add headers for CORS if needed
-  async headers() {
-    return [
-      {
-        source: '/api/auth/:path*',
-        headers: [
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: 'http://37.114.41.124:3000'
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'GET, POST, PUT, DELETE, OPTIONS'
-          },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization, Cookie, X-Requested-With'
-          },
-          {
-            key: 'Access-Control-Allow-Credentials',
-            value: 'true'
-          }
-        ]
-      }
-    ]
-  }
 };
 
 export default nextConfig;

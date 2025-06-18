@@ -4,11 +4,6 @@ import { getSessionCookie } from "better-auth/cookies";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Handle source map requests that don't exist (prevent 404 errors)
-  if (pathname.includes('.js.map') || pathname.includes('installHook')) {
-    return new NextResponse('', { status: 204 }); // No Content
-  }
-
   // Allow access to auth pages, API routes, and static assets
   if (
     pathname.startsWith('/auth') || 
@@ -38,7 +33,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - installHook (development files)
+     * - .js.map (source maps)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.js\\.map|installHook).*)',
   ]
 };

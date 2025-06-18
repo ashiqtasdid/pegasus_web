@@ -467,6 +467,75 @@ For support or modifications, refer to the generated source code.
     const match = result.match(/Project: ([^\n]+)/);
     return match ? match[1].trim() : 'GeneratedPlugin';
   };
+  const recompilePlugin = useCallback(async (userId: string, pluginName: string, maxFixAttempts: number = 5) => {
+    if (!userId || !pluginName) {
+      throw new Error('userId and pluginName are required');
+    }
+
+    setIsLoading(true);
+    
+    try {
+      console.log('Starting recompilation for:', { userId, pluginName, maxFixAttempts });
+      
+      const response = await fetch(`${apiBase}/plugin/recompile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          pluginName,
+          maxFixAttempts
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Recompilation failed: ${response.status} ${response.statusText}\n${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('Recompilation result:', result);
+
+      // Add success message to chat
+      if (result.success) {
+        const message = `✅ **Plugin Recompiled Successfully!**\n\n` +
+          `**Plugin:** ${pluginName}\n` +
+          `**Status:** ${result.compilationStatus || 'Success'}\n` +
+          (result.fixAttempts ? `**Fix Attempts:** ${result.fixAttempts}\n` : '') +
+          (result.jarPath ? `**JAR Location:** ${result.jarPath}\n` : '') +
+          `\n🎉 Your plugin has been successfully recompiled and is ready for use!`;
+        
+        addChatMessage('assistant', message, {
+          type: 'recompile-success'
+        });
+      } else {
+        const errorMessage = `❌ **Recompilation Failed**\n\n` +
+          `**Plugin:** ${pluginName}\n` +
+          `**Error:** ${result.error || 'Unknown error'}\n` +
+          (result.compilationErrors ? `**Compilation Errors:**\n\`\`\`\n${result.compilationErrors}\n\`\`\`` : '') +
+          `\n💡 Please check your code for syntax errors or try regenerating the plugin.`;
+        
+        addChatMessage('assistant', errorMessage, {
+          type: 'recompile-error'
+        });
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error during recompilation:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred during recompilation';
+      
+      addChatMessage('error', `❌ **Recompilation Error**\n\n${errorMessage}\n\n💡 Please try again or check your network connection.`, {
+        type: 'recompile-error'
+      });
+      
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiBase, addChatMessage]);
+
   return {
     isLoading,
     results,
@@ -484,6 +553,7 @@ For support or modifications, refer to the generated source code.
     clearChat,
     addChatMessage,
     startAutoRefresh,
-    stopAutoRefresh
+    stopAutoRefresh,
+    recompilePlugin
   };
 }

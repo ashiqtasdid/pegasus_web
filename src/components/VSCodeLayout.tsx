@@ -23,9 +23,12 @@ import {
   RotateCcw,
   Clock,
   Play,
-  Pause
+  Pause,
+  Hammer
 } from 'lucide-react';
 import { usePluginSync } from '@/hooks/usePluginSync';
+import { usePluginGenerator } from '@/hooks/usePluginGenerator';
+import { UserMenu } from './UserMenu';
 
 interface VSCodeLayoutProps {
   className?: string;
@@ -103,12 +106,14 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
   useEffect(() => {
     showSuccessRef.current = showSuccess;
     showErrorRef.current = showError;
-  }, [showSuccess, showError]);
-    // Plugin sync functionality - using just syncPluginFiles for manual sync
+  }, [showSuccess, showError]);    // Plugin sync functionality - using just syncPluginFiles for manual sync
   const { syncPluginFiles } = usePluginSync();
   
+  // Plugin generator functionality for recompilation
+  const { recompilePlugin, isLoading: isRecompiling } = usePluginGenerator();
+  
   // Check if we're in development mode
-  const isDevelopmentMode = process.env.DEVELOP === 'true';  const loadPluginFiles = useCallback(async (pluginName: string, force: boolean = false) => {
+  const isDevelopmentMode = process.env.DEVELOP === 'true';const loadPluginFiles = useCallback(async (pluginName: string, force: boolean = false) => {
     const cacheKey = `${pluginName}-${userIdRef.current || 'anonymous'}`;
     
     // Prevent loading the same plugin multiple times using refs (unless forced)
@@ -562,6 +567,42 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
     }
   };
 
+  // Manual recompile function
+  const handleRecompilePlugin = async () => {
+    if (!pluginId || !userId) return;
+    
+    setIsLoadingPlugin(true);
+    try {
+      // First get the plugin to extract the plugin name
+      const pluginResponse = await fetch(`/api/plugins/${pluginId}`);
+      const pluginData = await pluginResponse.json();
+      
+      if (!pluginResponse.ok || !pluginData.plugin) {
+        showError('Recompile Failed', 'Could not load plugin information');
+        return;
+      }
+      
+      const pluginName = pluginData.plugin.pluginName;
+      console.log('Starting recompilation for:', { userId, pluginName });
+      
+      const result = await recompilePlugin(userId, pluginName, 5);
+      
+      if (result.success) {
+        showSuccess('Recompile Complete', `Plugin "${pluginName}" recompiled successfully!`);
+        // Force reload files after recompile to show any changes
+        await forceRefreshFiles(pluginId);
+      } else {
+        showError('Recompile Failed', result.error || 'Unknown compilation error');
+      }
+    } catch (error) {
+      console.error('Error during recompilation:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      showError('Recompile Failed', errorMessage);
+    } finally {
+      setIsLoadingPlugin(false);
+    }
+  };
+
   if (!mounted) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -645,8 +686,7 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
                 disabled={isLoadingPlugin}
               >
                 <RefreshCw className={`w-4 h-4 ${isLoadingPlugin ? 'animate-spin' : ''}`} />
-              </Button>
-                <Button 
+              </Button>              <Button 
                 variant="ghost" 
                 size="sm" 
                 className="h-8 w-8 p-0" 
@@ -655,6 +695,18 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
                 disabled={isLoadingPlugin}
               >
                 <RotateCcw className={`w-4 h-4 ${isLoadingPlugin ? 'animate-spin' : ''}`} />
+              </Button>
+              
+              {/* Recompile button */}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 p-0" 
+                title="Recompile Plugin"
+                onClick={handleRecompilePlugin}
+                disabled={isLoadingPlugin || isRecompiling}
+              >
+                <Hammer className={`w-4 h-4 ${(isLoadingPlugin || isRecompiling) ? 'animate-pulse' : ''}`} />
               </Button>
               
               {/* Auto-refresh toggle */}
@@ -680,13 +732,17 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
               )}
             </>
           )}
-          
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Terminal">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Terminal">
             <Terminal className="w-4 h-4" />
           </Button>
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Settings">
             <Settings className="w-4 h-4" />
           </Button>
+          
+          {/* User Menu */}
+          <div className="ml-2">
+            <UserMenu variant="header" showEmail={false} />
+          </div>
           
           {/* Right sidebar toggle */}
           <Button

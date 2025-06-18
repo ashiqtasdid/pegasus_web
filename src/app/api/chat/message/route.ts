@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,6 +13,21 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Check if we're in development mode
+    const isDevelopmentMode = process.env.DEVELOP === 'true';
+    
+    // Get user session for proper user identification
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    // Use session user ID or fallback for development/testing
+    const actualUserId = isDevelopmentMode 
+      ? 'testuser' 
+      : (session?.user?.id || username || 'anonymous');
+
+    console.log('Chat message from user:', actualUserId, 'Plugin:', pluginName);
+
     // Check if external backend is configured
     const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
     
@@ -22,10 +38,9 @@ export async function POST(request: NextRequest) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+          },          body: JSON.stringify({
             message,
-            username,
+            username: actualUserId,
             pluginName
           }),
           signal: AbortSignal.timeout(25000) // 25 second timeout
