@@ -445,9 +445,8 @@ export function CreatePluginModal({ open, onOpenChange, onCreatePlugin, isLoadin
                     
                     <Separator className="bg-green-200 dark:bg-green-800" />
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Button 
-                        onClick={() => router.push(`/dashboard/editor?plugin=${encodeURIComponent(generatedPluginName || pluginName)}`)}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">                      <Button 
+                        onClick={() => router.push(`/dashboard/editor?plugin=${encodeURIComponent(generatedPluginName || pluginName)}&userId=${encodeURIComponent(userId)}`)}
                         className="w-full bg-green-600 hover:bg-green-700 text-white"
                       >
                         <Edit className="h-4 w-4 mr-2" />

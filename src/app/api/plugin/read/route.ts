@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { pluginService } from '@/lib/plugin-service';
+import { auth } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if we're in development mode
+    const isDevelopmentMode = process.env.DEVELOP === 'true';
+    
+    // Get user session
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!isDevelopmentMode && !session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { userId, pluginName } = body;
 
@@ -11,6 +24,15 @@ export async function POST(request: NextRequest) {
         projectExists: false,
         error: 'userId and pluginName are required'
       }, { status: 400 });
+    }
+
+    // Security check: ensure user can only access their own files
+    const sessionUserId = session?.user?.id || 'testuser';
+    if (!isDevelopmentMode && userId !== sessionUserId) {
+      return NextResponse.json({
+        projectExists: false,
+        error: 'Access denied: You can only access your own plugin files'
+      }, { status: 403 });
     }
 
     // Get plugin from database

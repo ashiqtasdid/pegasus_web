@@ -1,10 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MongoClient } from 'mongodb';
+import { auth } from '@/lib/auth';
 
 const MONGODB_URI = process.env.MONGODB_URI!;
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if we're in development mode
+    const isDevelopmentMode = process.env.DEVELOP === 'true';
+    
+    // Get user session
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!isDevelopmentMode && !session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { userId, pluginName } = body;
 
@@ -13,6 +26,15 @@ export async function POST(request: NextRequest) {
         success: false,
         error: 'userId and pluginName are required'
       }, { status: 400 });
+    }
+
+    // Security check: ensure user can only access their own files (unless in development mode)
+    const sessionUserId = session?.user?.id || 'testuser';
+    if (!isDevelopmentMode && userId !== sessionUserId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Access denied: You can only access your own plugin files'
+      }, { status: 403 });
     }
 
     console.log('Plugin files API called:', { userId, pluginName });

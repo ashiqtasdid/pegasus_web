@@ -16,15 +16,21 @@ export async function GET(
 
     if (!isDevelopmentMode && !session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { userId, pluginName } = await params;
+    }    const { userId, pluginName } = await params;
     
     if (!userId || !pluginName) {
       return NextResponse.json(
         { error: 'userId and pluginName are required' },
         { status: 400 }
       );
+    }
+
+    // Security check: ensure user can only download their own files
+    const sessionUserId = session?.user?.id || 'testuser';
+    if (!isDevelopmentMode && userId !== sessionUserId) {
+      return NextResponse.json({
+        error: 'Access denied: You can only download your own plugin files'
+      }, { status: 403 });
     }
 
     // Forward request to backend API

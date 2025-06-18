@@ -17,7 +17,10 @@ function EditorPageContent() {
   
   // Get plugin info from URL
   const pluginId = searchParams.get('plugin');
-  const userId = searchParams.get('userId');
+  const urlUserId = searchParams.get('userId');
+  
+  // Use URL userId if provided, otherwise fall back to session user ID
+  const userId = urlUserId || (isDevelopmentMode ? 'testuser' : session?.user?.id);
 
   useEffect(() => {
     setMounted(true);

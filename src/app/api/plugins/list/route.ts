@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MongoClient, WithId, Document } from 'mongodb';
+import { auth } from '@/lib/auth';
 
 const MONGODB_URI = process.env.MONGODB_URI!;
 
@@ -22,8 +23,31 @@ interface PluginDocument extends Document {
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if we're in development mode
+    const isDevelopmentMode = process.env.DEVELOP === 'true';
+    
+    // Get user session
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!isDevelopmentMode && !session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const url = new URL(request.url);
-    const userId = url.searchParams.get('userId') || 'testuser';
+    const requestedUserId = url.searchParams.get('userId');
+    const sessionUserId = session?.user?.id || 'testuser';
+
+    // Use session user ID, or validate requested user ID matches session
+    const userId = requestedUserId || sessionUserId;
+    
+    // Security check: ensure user can only list their own plugins
+    if (!isDevelopmentMode && userId !== sessionUserId) {
+      return NextResponse.json({
+        error: 'Access denied: You can only list your own plugins'
+      }, { status: 403 });
+    }
 
     console.log('Plugin list API called for userId:', userId);
 

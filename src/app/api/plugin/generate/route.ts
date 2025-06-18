@@ -1,9 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if we're in development mode
+    const isDevelopmentMode = process.env.DEVELOP === 'true';
+    
+    // Get user session
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!isDevelopmentMode && !session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
-    const { prompt, pluginName, name } = body;
+    const { prompt, pluginName, name, userId } = body;
+
+    // Validate that the user can only generate plugins for themselves
+    const sessionUserId = session?.user?.id || 'testuser';
+    if (!isDevelopmentMode && userId && userId !== sessionUserId) {
+      return NextResponse.json({ 
+        error: 'Access denied: You can only generate plugins for your own account' 
+      }, { status: 403 });
+    }
 
     // Mock plugin generation response
     // In a real implementation, this would call an AI service

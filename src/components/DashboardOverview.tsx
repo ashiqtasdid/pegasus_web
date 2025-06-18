@@ -123,10 +123,9 @@ export function DashboardOverview() {
   const handleCreatePlugin = (data: { prompt: string; userId: string; pluginName?: string }) => {
     generatePlugin(data);
     // Don't close modal immediately - let the modal handle its own state based on generation events
-  };
-  const handleEditPlugin = (pluginId: string) => {
-    router.push(`/dashboard/editor?plugin=${pluginId}`);
-  };  const handleDownloadJar = async (e: React.MouseEvent, pluginName: string) => {
+  };  const handleEditPlugin = (pluginId: string) => {
+    router.push(`/dashboard/editor?plugin=${pluginId}&userId=${encodeURIComponent(currentUserId)}`);
+  };const handleDownloadJar = async (e: React.MouseEvent, pluginName: string) => {
     e.preventDefault();
     e.stopPropagation();
     await downloadJar(currentUserId, pluginName);
@@ -225,9 +224,7 @@ export function DashboardOverview() {
             <h3 className="font-semibold text-lg mb-2">Quick Start Guide</h3>
             <p className="text-sm text-muted-foreground">Learn how to create your first plugin</p>
           </CardContent>
-        </Card>
-
-        <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer" onClick={() => router.push('/dashboard/editor')}>
+        </Card>        <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer" onClick={() => router.push(`/dashboard/editor?userId=${encodeURIComponent(currentUserId)}`)}>
           <CardContent className="flex flex-col items-center justify-center p-8 text-center">
             <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mb-4 group-hover:bg-accent/20 transition-colors">
               <FileText className="h-8 w-8 text-accent" />
