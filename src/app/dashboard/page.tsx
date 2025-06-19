@@ -1,18 +1,24 @@
 'use client';
 
 import { useSession } from '@/lib/auth-client';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
 import { DashboardOverview } from '@/components/DashboardOverview';
+import { UserProfile } from '@/components/auth/UserProfile';
+import { UserSettings } from '@/components/UserSettings';
 import { Loader2 } from 'lucide-react';
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { data: session, isPending, error } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
   
   // Check if we're in development mode
   const isDevelopmentMode = process.env.DEVELOP === 'true';
+  
+  // Get view parameter from URL
+  const view = searchParams.get('view');
 
   useEffect(() => {
     setMounted(true);
@@ -45,6 +51,36 @@ export default function DashboardPage() {
   if (!isDevelopmentMode && (!session || error)) {
     return null; // Will redirect to auth
   }
-  
-  return <DashboardOverview />;
+    // Handle different views
+  switch (view) {
+    case 'profile':
+      return (
+        <UserProfile 
+          onClose={() => router.push('/dashboard')}
+        />
+      );
+    case 'settings':
+      return (
+        <UserSettings 
+          onClose={() => router.push('/dashboard')}
+        />
+      );
+    default:
+      return <DashboardOverview />;
+  }
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
+  );
 }

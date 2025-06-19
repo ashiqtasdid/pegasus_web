@@ -3,7 +3,7 @@
 import { Editor } from '@monaco-editor/react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Save, Download, Copy, FileText } from 'lucide-react';
+import { Save, Download, Copy, FileText, Package } from 'lucide-react';
 
 interface MonacoEditorProps {
   file?: {
@@ -13,9 +13,11 @@ interface MonacoEditorProps {
   };
   onSave?: (content: string) => void;
   readOnly?: boolean;
+  userId?: string | null;
+  pluginName?: string | null;
 }
 
-export function MonacoEditor({ file, onSave, readOnly = false }: MonacoEditorProps) {
+export function MonacoEditor({ file, onSave, readOnly = false, userId, pluginName }: MonacoEditorProps) {
   const [content, setContent] = useState(file?.content || '// Welcome to Pegasus Code Editor\n// Select a file from the explorer to start coding\n');
   const [isDirty, setIsDirty] = useState(false);
   const [fontSize, setFontSize] = useState(14);
@@ -70,9 +72,49 @@ export function MonacoEditor({ file, onSave, readOnly = false }: MonacoEditorPro
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
+  };
+
+  const handleDownloadJar = async () => {
+    if (!userId || !pluginName) {
+      alert('Cannot download JAR: Missing user ID or plugin name');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/plugin/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      // Get the filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = `${pluginName}.jar`;
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download JAR:', error);
+      alert(`Failed to download JAR: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   // Configure Monaco editor with dark theme only
@@ -102,8 +144,7 @@ export function MonacoEditor({ file, onSave, readOnly = false }: MonacoEditorPro
             {fontSize}px
           </span>
         </div>
-        
-        <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1">
           {!readOnly && (
             <Button 
               variant="ghost" 
@@ -134,6 +175,18 @@ export function MonacoEditor({ file, onSave, readOnly = false }: MonacoEditorPro
             <Download className="w-3 h-3 mr-1" />
             Download
           </Button>
+          {userId && pluginName && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleDownloadJar}
+              className="h-7 px-2"
+              title={`Download ${pluginName}.jar`}
+            >
+              <Package className="w-3 h-3 mr-1" />
+              JAR
+            </Button>
+          )}
         </div>
       </div>
 

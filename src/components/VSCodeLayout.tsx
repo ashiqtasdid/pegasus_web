@@ -802,14 +802,15 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
                 </div>
               </div>
             </div>
-          ) : selectedFile ? (
-            <MonacoEditor
+          ) : selectedFile ? (            <MonacoEditor
               file={{
                 name: selectedFile.name,
                 content: selectedFile.content || '',
                 language: selectedFile.language || 'javascript'
               }}
               onSave={handleFileSave}
+              userId={userId}
+              pluginName={pluginId} // pluginId is actually the plugin name
             />
           ) : (
             <div className="flex-1 flex items-center justify-center bg-muted/20">

@@ -31,7 +31,6 @@ import {
 } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 
 interface UserProfileProps {
   onClose?: () => void;
@@ -94,15 +93,17 @@ export function UserProfile({ onClose }: UserProfileProps = {}) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(profileData),
-      });      if (response.ok) {
+      });
+
+      if (response.ok) {
         setIsEditing(false);
-        toast.success('Profile updated successfully!');
+        alert('Profile updated successfully!');
       } else {
-        toast.error('Failed to update profile');
+        alert('Failed to update profile');
       }
     } catch (error) {
       console.error('Save error:', error);
-      toast.error('Failed to update profile');
+      alert('Failed to update profile');
     } finally {
       setIsSaving(false);
     }
@@ -482,55 +483,9 @@ export function UserProfile({ onClose }: UserProfileProps = {}) {
                   <Badge variant={profileData.showEmail ? "default" : "secondary"}>
                     {profileData.showEmail ? 'Visible' : 'Hidden'}
                   </Badge>
-                </div>              </div>
+                </div>
+              </div>
             )}
-          </CardContent>
-        </Card>
-
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Recent Activity
-            </CardTitle>
-            <CardDescription>Your recent actions and activity</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                <div className="p-1.5 bg-primary/10 text-primary rounded-full">
-                  <User className="h-3 w-3" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">Profile Updated</p>
-                  <p className="text-xs text-muted-foreground">Updated profile information</p>
-                  <p className="text-xs text-muted-foreground mt-1">2 hours ago</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                <div className="p-1.5 bg-green-500/10 text-green-600 rounded-full">
-                  <Settings className="h-3 w-3" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">Settings Changed</p>
-                  <p className="text-xs text-muted-foreground">Updated notification preferences</p>
-                  <p className="text-xs text-muted-foreground mt-1">1 day ago</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                <div className="p-1.5 bg-blue-500/10 text-blue-600 rounded-full">
-                  <Shield className="h-3 w-3" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">Security Update</p>
-                  <p className="text-xs text-muted-foreground">Password changed successfully</p>
-                  <p className="text-xs text-muted-foreground mt-1">3 days ago</p>
-                </div>
-              </div>
-            </div>
           </CardContent>
         </Card>
 
