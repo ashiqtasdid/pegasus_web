@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Bot, Send, Trash2, Loader2 } from 'lucide-react';
 
 interface Message {
@@ -87,9 +86,10 @@ export function DashboardChatSection({
       .replace(/^- (.*$)/gm, '<li class="ml-4">• $1</li>');
   };  return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Chat Messages - Enhanced scrollability */}
-      <ScrollArea className="flex-1 pr-2 min-h-0">
-        <div className="space-y-4 p-3">          {messages.length === 0 ? (
+      {/* Chat Messages - Fixed scrollability */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="h-full overflow-y-auto p-3 space-y-4">
+          {messages.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               <div className="p-3 bg-muted/30 rounded-xl w-fit mx-auto mb-3">
                 <Bot className="h-10 w-10 opacity-50" />
@@ -167,7 +167,7 @@ export function DashboardChatSection({
             </>
           )}
         </div>
-      </ScrollArea>      {/* Quick Questions */}
+      </div>      {/* Quick Questions */}
       {messages.length === 0 && (
         <div className="py-3 border-t border-muted/50">
           <div className="text-xs font-medium text-muted-foreground mb-2">Quick questions:</div>

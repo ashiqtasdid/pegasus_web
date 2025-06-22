@@ -446,7 +446,7 @@ For support or modifications, refer to the generated source code.
       };
       setChatMessages(prev => [...prev, errorMessage]);
     }
-  }, [apiBase, currentProject]);
+  }, [currentProject]);
 
   const clearChat = useCallback(() => {
     setChatMessages([]);

@@ -553,11 +553,7 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
     setSelectedFile(file);
   };
 
-  const handleCodeInsert = (code: string) => {
-    // This would insert code into the current editor position
-    console.log('Inserting code:', code);
-    // You can implement actual code insertion here
-  };
+
 
   const handleFileSave = (content: string) => {
     if (selectedFile) {
@@ -756,7 +752,7 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
       </div>      {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden relative">        {/* Left Sidebar - Chat */}
         {isLeftSidebarOpen && (
-          <div className="w-96 flex-shrink-0 relative z-10">
+          <div className="w-96 flex-shrink-0 relative z-10 h-full">
             <ErrorBoundary fallback={
               <div className="flex flex-col h-full border-r bg-background">
                 <div className="flex items-center justify-between p-3 border-b">
@@ -777,7 +773,6 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
                 </div>
               </div>
             }>              <ChatSidebar 
-                onCodeInsert={handleCodeInsert}
                 messages={chatMessages}
                 onSendMessage={sendChatMessage}
                 onClearChat={clearChat}

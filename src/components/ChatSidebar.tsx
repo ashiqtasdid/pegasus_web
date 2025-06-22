@@ -3,8 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
   Send, 
   Bot, 
@@ -12,9 +11,6 @@ import {
   MessageSquare, 
   Settings,
   MoreVertical,
-  Copy,
-  ThumbsUp,
-  ThumbsDown,
   RefreshCw
 } from 'lucide-react';
 
@@ -32,7 +28,6 @@ interface ChatMessage {
 }
 
 interface ChatSidebarProps {
-  onCodeInsert?: (code: string) => void;
   messages?: ChatMessage[];
   onSendMessage?: (message: string) => Promise<void>;
   onClearChat?: () => void;
@@ -40,7 +35,6 @@ interface ChatSidebarProps {
 }
 
 export function ChatSidebar({ 
-  onCodeInsert, 
   messages: externalMessages, 
   onSendMessage: externalOnSendMessage, 
   onClearChat: externalOnClearChat,
@@ -87,299 +81,50 @@ export function ChatSidebar({
   // Use external state if provided, otherwise use internal state
   const messages = externalMessages || internalMessages;
   const isLoading = externalIsLoading || internalIsLoading;
+
   // Handle sending message
   const handleSend = async () => {
     if (!inputValue.trim() || isLoading) return;
-    
     const message = inputValue.trim();
     setInputValue('');
-    
-    try {
-      if (externalOnSendMessage) {
-        // Use external handler
-        await externalOnSendMessage(message);
-      } else {
-        // Use internal handler
-        const userMessage: ChatMessage = {
-          id: Date.now().toString(),
-          content: message,
-          sender: 'user',
-          timestamp: new Date()
-        };
-
-        setInternalMessages(prev => [...prev, userMessage]);
-        setInternalIsLoading(true);
-
-        // Simulate AI response (replace with actual API call)
-        setTimeout(() => {
-          const assistantMessage: ChatMessage = {
-            id: (Date.now() + 1).toString(),
-            content: generateMockResponse(message),
-            sender: 'assistant',
-            timestamp: new Date()
-          };
-          setInternalMessages(prev => [...prev, assistantMessage]);
-          setInternalIsLoading(false);
-        }, 1000 + Math.random() * 2000);
-      }
-    } catch (error) {
-      console.error('Error sending chat message:', error);
-      // Reset loading state if external handler fails
-      if (externalOnSendMessage) {
-        // External handlers should manage their own loading states
-        // but we should ensure input is restored on error
-        setInputValue(message);
-      } else {
-        setInternalIsLoading(false);
-        // Add error message
-        const errorMessage: ChatMessage = {
+    if (externalOnSendMessage) {
+      await externalOnSendMessage(message);
+    } else {
+      const userMessage: ChatMessage = {
+        id: Date.now().toString(),
+        content: message,
+        sender: 'user',
+        timestamp: new Date()
+      };
+      setInternalMessages(prev => [...prev, userMessage]);
+      setInternalIsLoading(true);
+      setTimeout(() => {
+        const assistantMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
-          content: 'Failed to send message. Please try again.',
+          content: 'This is a mock response.',
           sender: 'assistant',
           timestamp: new Date()
         };
-        setInternalMessages(prev => [...prev, errorMessage]);
-      }
+        setInternalMessages(prev => [...prev, assistantMessage]);
+        setInternalIsLoading(false);
+      }, 1000);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  // Scroll to bottom on new message
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const generateMockResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase();
-    
-    if (input.includes('component') || input.includes('react')) {
-      return `Here's a React component example:
-
-\`\`\`tsx
-import React from 'react';
-
-interface Props {
-  title: string;
-  children: React.ReactNode;
-}
-
-export function Card({ title, children }: Props) {
   return (
-    <div className="card">
-      <h3>{title}</h3>
-      <div>{children}</div>
-    </div>
-  );
-}
-\`\`\`
-
-Would you like me to explain any part of this component or help you customize it?`;
-    }
-    
-    if (input.includes('bug') || input.includes('error') || input.includes('debug')) {
-      return `I'd be happy to help you debug! To better assist you, please share:
-
-1. The error message you're seeing
-2. The relevant code snippet
-3. What you expected to happen
-4. Steps to reproduce the issue
-
-Common debugging steps:
-• Check the browser console for errors
-• Verify prop types and data flow
-• Use breakpoints or console.log statements
-• Check network requests in DevTools`;
-    }
-    
-    if (input.includes('typescript') || input.includes('types')) {
-      return `TypeScript is great for catching errors early! Here are some common patterns:
-
-\`\`\`typescript
-// Interface for props
-interface UserProps {
-  id: number;
-  name: string;
-  email?: string; // optional
-}
-
-// Generic type
-type ApiResponse<T> = {
-  data: T;
-  status: 'success' | 'error';
-  message?: string;
-}
-
-// Union types
-type Theme = 'light' | 'dark' | 'auto';
-\`\`\`
-
-What specific TypeScript concept would you like help with?`;
-    }
-    
-    return `I understand you're asking about "${userInput}". I'm here to help with your coding needs! Could you provide more details about what you're trying to accomplish?
-
-Some things I can help with:
-• Code generation and examples
-• Debugging and troubleshooting
-• Best practices and patterns
-• Performance optimization
-• Testing strategies
-
-Feel free to share your code or describe your specific challenge!`;
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
-
-  const formatTimestamp = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };  // Temporarily disabled - will be used for code extraction feature
-  // const extractCodeBlocks = (content: string) => {
-  //   const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-  //   const blocks = [];
-  //   let match;
-  //   
-  //   while ((match = codeBlockRegex.exec(content)) !== null) {
-  //     blocks.push({
-  //       language: match[1] || 'text',
-  //       code: match[2].trim()
-  //     });
-  //   }
-  //   
-  //   return blocks;
-  // };
-  const renderMessage = (message: ChatMessage) => {
-    const isUser = message.sender === 'user';
-    
-    return (
-      <div key={message.id} className={`group mb-4 ${isUser ? 'ml-8' : 'mr-8'}`}>
-        <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
-          <Avatar className="w-8 h-8 flex-shrink-0">
-            {isUser ? (
-              <>
-                <AvatarImage src="" />
-                <AvatarFallback>
-                  <User className="w-4 h-4" />
-                </AvatarFallback>
-              </>
-            ) : (
-              <AvatarFallback className="bg-blue-500 text-white">
-                <Bot className="w-4 h-4" />
-              </AvatarFallback>
-            )}
-          </Avatar>
-          
-          <div className={`flex-1 ${isUser ? 'text-right' : ''}`}>
-            <div className={`inline-block max-w-full rounded-lg px-3 py-2 ${
-              isUser 
-                ? 'bg-blue-500 text-white' 
-                : 'bg-muted border'
-            }`}>
-              <div className="text-sm whitespace-pre-wrap">
-                {message.content.split(/(```[\s\S]*?```)/g).map((part, index) => {
-                  if (part.startsWith('```') && part.endsWith('```')) {
-                    const lines = part.split('\n');
-                    const language = lines[0].replace('```', '') || 'text';
-                    const code = lines.slice(1, -1).join('\n');
-                    
-                    return (
-                      <div key={index} className="my-2">
-                        <div className="bg-gray-900 text-gray-100 rounded-md">
-                          <div className="flex items-center justify-between px-3 py-1 bg-gray-800 rounded-t-md">
-                            <span className="text-xs text-gray-400">{language}</span>
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-gray-400 hover:text-white"
-                                onClick={() => copyToClipboard(code)}
-                              >
-                                <Copy className="w-3 h-3" />
-                              </Button>
-                              {onCodeInsert && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 px-2 text-gray-400 hover:text-white"
-                                  onClick={() => onCodeInsert(code)}
-                                >
-                                  Insert
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                          <pre className="p-3 text-sm overflow-x-auto">
-                            <code>{code}</code>
-                          </pre>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return part;
-                })}
-              </div>
-            </div>
-              <div className={`flex items-center gap-2 mt-1 text-xs text-muted-foreground ${
-              isUser ? 'justify-end' : ''
-            }`}>
-              <span>{formatTimestamp(message.timestamp)}</span>
-              
-              {/* Show metadata for assistant messages */}
-              {!isUser && message.metadata && (
-                <div className="flex gap-1">
-                  {message.metadata.contextLoaded && (
-                    <span className="px-1 py-0.5 bg-emerald-500/10 text-emerald-600 rounded text-xs">
-                      Context loaded
-                    </span>
-                  )}
-                  {message.metadata.filesAnalyzed && message.metadata.filesAnalyzed > 0 && (
-                    <span className="px-1 py-0.5 bg-blue-500/10 text-blue-600 rounded text-xs">
-                      {message.metadata.filesAnalyzed} files
-                    </span>
-                  )}
-                </div>
-              )}
-              
-              {!isUser && (
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
-                    <ThumbsUp className="w-3 h-3" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
-                    <ThumbsDown className="w-3 h-3" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-5 w-5 p-0"
-                    onClick={() => copyToClipboard(message.content)}
-                  >
-                    <Copy className="w-3 h-3" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };  return (
     <div className="flex flex-col h-full border-r bg-background relative">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b bg-background flex-shrink-0">
         <div className="flex items-center gap-2">
           <MessageSquare className="w-4 h-4" />
           <h2 className="text-sm font-semibold">AI Assistant</h2>
-        </div><div className="flex gap-1">
+        </div>
+        <div className="flex gap-1">
           <Button 
             variant="ghost" 
             size="sm" 
@@ -409,36 +154,65 @@ Feel free to share your code or describe your specific challenge!`;
             <MoreVertical className="w-3 h-3" />
           </Button>
         </div>
-      </div>      {/* Messages */}
-      <div className="flex-1 overflow-hidden">
-        <ScrollArea className="h-full">
-          <div className="p-4">
-            {messages.map(renderMessage)}
-            {isLoading && (
-              <div className="mr-8 mb-4">
-                <div className="flex gap-3">
-                  <Avatar className="w-8 h-8 flex-shrink-0">
+      </div>
+      {/* Messages */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="h-full overflow-y-auto p-4 space-y-4 chat-scrollbar">
+          {messages.map((msg, idx) => (
+            <div key={msg.id || idx} className="group">
+              <div className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {msg.sender === 'assistant' && (
+                  <Avatar className="w-8 h-8 flex-shrink-0 mr-3">
                     <AvatarFallback className="bg-blue-500 text-white">
                       <Bot className="w-4 h-4" />
                     </AvatarFallback>
                   </Avatar>
-                  <div className="bg-muted border rounded-lg px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                      </div>
-                      <span className="text-xs text-muted-foreground">AI is typing...</span>
-                    </div>
+                )}
+                <div className={`px-3 py-2 rounded-xl max-w-[80%] ${
+                  msg.sender === 'user' 
+                    ? 'bg-primary text-primary-foreground shadow-md' 
+                    : 'bg-muted/40 border border-muted/50'
+                }`}>
+                  <div className="text-sm break-words whitespace-pre-wrap">{msg.content}</div>
+                  <div className={`text-xs mt-1 ${
+                    msg.sender === 'user' ? 'opacity-75' : 'text-muted-foreground'
+                  }`}>
+                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
+                {msg.sender === 'user' && (
+                  <Avatar className="w-8 h-8 flex-shrink-0 ml-3">
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      <User className="w-4 h-4" />
+                    </AvatarFallback>
+                  </Avatar>
+                )}
               </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
-      </div>      {/* Input */}
+            </div>
+          ))}
+          {isLoading && (
+            <div className="flex justify-start">
+              <Avatar className="w-8 h-8 flex-shrink-0 mr-3">
+                <AvatarFallback className="bg-blue-500 text-white">
+                  <Bot className="w-4 h-4" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="bg-muted/40 px-3 py-2 rounded-xl border border-muted/50">
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  </div>
+                  <span className="text-xs text-muted-foreground">AI is typing...</span>
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+      {/* Input */}
       <div className="p-3 border-t bg-background flex-shrink-0">
         <div className="flex gap-2">
           <Input
@@ -446,7 +220,12 @@ Feel free to share your code or describe your specific challenge!`;
             placeholder="Ask me anything about code..."
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={(e) => { 
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
             disabled={isLoading}
             className="flex-1"
           />
