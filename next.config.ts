@@ -18,11 +18,11 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       allowedOrigins: [
-        'localhost:3001', 
-        '0.0.0.0:3001',
+        'localhost:3000',  // Frontend port
+        '0.0.0.0:3000',
         '37.114.41.124:3000',
-        'localhost:3000',
-        '37.114.41.124:3001', // Allow requests to external API
+        'localhost:3001',  // External API port
+        '37.114.41.124:3001', // External API production
       ]
     }
   },

@@ -39,9 +39,18 @@ interface CurrentProject {
   pluginName: string;
 }
 
+interface TokenUsage {
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens: number;
+  requestCount?: number;
+  tokensUsedThisRequest?: number;
+}
+
 interface Results {
   result: string;
   requestData: FormData & { autoCompile: boolean };
+  tokenUsage?: TokenUsage;
 }
 
 export function usePluginGenerator() {
@@ -189,9 +198,29 @@ export function usePluginGenerator() {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const result = await response.text();
+      const responseData = await response.json();
+      const result = responseData.result || responseData;
+      const tokenUsage = responseData.tokenUsage;
       
-      const newResults = { result, requestData };
+      // Log token usage for analytics
+      if (tokenUsage) {
+        console.log('🔢 Token Usage Analytics:', tokenUsage);
+        console.log(`📊 Tokens used this request: ${tokenUsage.tokensUsedThisRequest || tokenUsage.totalTokens}`);
+        console.log(`📈 Total requests: ${tokenUsage.requestCount}`);
+        
+        // Dispatch token usage event for other components to listen to
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('token-usage-updated', {
+            detail: {
+              userId: data.userId,
+              tokenUsage,
+              operation: 'plugin-generation'
+            }
+          }));
+        }
+      }
+      
+      const newResults = { result, requestData, tokenUsage };
       setResults(newResults);
 
       // Store current project info

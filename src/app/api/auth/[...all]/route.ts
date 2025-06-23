@@ -9,7 +9,7 @@ const getAllowedOrigin = (request?: NextRequest) => {
   if (process.env.NODE_ENV === 'production') {
     return 'http://37.114.41.124:3000';
   }
-    // In development, use the request's origin if available, fallback to localhost:3001
+    // In development, use the request's origin if available, fallback to localhost:3000
   if (request) {
     const origin = request.headers.get('origin');
     if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
@@ -17,7 +17,7 @@ const getAllowedOrigin = (request?: NextRequest) => {
     }
   }
   
-  return 'http://localhost:3001';
+  return 'http://localhost:3000';
 };
 
 // Add CORS headers to response

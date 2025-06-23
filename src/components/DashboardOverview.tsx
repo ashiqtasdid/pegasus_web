@@ -23,6 +23,7 @@ import { usePluginGenerator } from '@/hooks/usePluginGenerator';
 import { WelcomeCard } from './WelcomeCard';
 import { DashboardLoadingState } from './DashboardLoadingState';
 import { CreatePluginModal } from './CreatePluginModal';
+import { TokenUsageStats } from './TokenUsageStats';
 
 interface Plugin {
   _id: string;
@@ -233,6 +234,15 @@ export function DashboardOverview() {
             <p className="text-sm text-muted-foreground">Edit your plugins with our advanced editor</p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* AI Token Usage Section */}
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">AI Usage Analytics</h2>
+          <p className="text-muted-foreground">Track your OpenRouter API token consumption</p>
+        </div>
+        <TokenUsageStats userId={currentUserId} />
       </div>
 
       {/* Recent Plugins */}

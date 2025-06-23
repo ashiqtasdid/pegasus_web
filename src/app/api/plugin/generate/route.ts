@@ -16,137 +16,66 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { prompt, pluginName, name, userId } = body;
+    const { prompt, pluginName, name, userId, autoCompile = true, complexity = 5 } = body;
 
     // Validate that the user can only generate plugins for themselves
     const sessionUserId = session?.user?.id || 'testuser';
+    const actualUserId = isDevelopmentMode ? (userId || sessionUserId) : sessionUserId;
+    
     if (!isDevelopmentMode && userId && userId !== sessionUserId) {
       return NextResponse.json({ 
         error: 'Access denied: You can only generate plugins for your own account' 
       }, { status: 403 });
     }
 
-    // Mock plugin generation response
-    // In a real implementation, this would call an AI service
-    const mockGeneratedContent = `
-COMPILATION SUCCESSFUL
-
-Plugin project generated successfully!
-
-Project: ${pluginName || name || 'GeneratedPlugin'}
-Minecraft Version: 1.20.1
-Main Class: ${pluginName || name || 'GeneratedPlugin'}Main
-
----FILE: src/main/java/com/example/${(pluginName || name || 'generatedplugin').toLowerCase()}/${pluginName || name || 'GeneratedPlugin'}Main.java---
-package com.example.${(pluginName || name || 'generatedplugin').toLowerCase()};
-
-import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.event.Listener;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
-import org.bukkit.ChatColor;
-
-public class ${pluginName || name || 'GeneratedPlugin'}Main extends JavaPlugin implements Listener {
-    
-    @Override
-    public void onEnable() {
-        getLogger().info("${pluginName || name || 'GeneratedPlugin'} has been enabled!");
-        getServer().getPluginManager().registerEvents(this, this);
+    if (!prompt) {
+      return NextResponse.json(
+        { success: false, error: "Prompt is required" },
+        { status: 400 }
+      );
     }
-    
-    @Override
-    public void onDisable() {
-        getLogger().info("${pluginName || name || 'GeneratedPlugin'} has been disabled!");
-    }
-    
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (command.getName().equalsIgnoreCase("test")) {
-            if (sender instanceof Player) {
-                Player player = (Player) sender;
-                player.sendMessage(ChatColor.GREEN + "Hello from ${pluginName || name || 'GeneratedPlugin'}!");
-                return true;
-            }
-        }
-        return false;
-    }
-}
 
----FILE: src/main/resources/plugin.yml---
-name: ${pluginName || name || 'GeneratedPlugin'}
-version: 1.0.0
-main: com.example.${(pluginName || name || 'generatedplugin').toLowerCase()}.${pluginName || name || 'GeneratedPlugin'}Main
-api-version: 1.20
-description: ${prompt.substring(0, 100)}...
-author: Test User
-commands:
-  test:
-    description: Test command for ${pluginName || name || 'GeneratedPlugin'}
-    usage: /test
-
----FILE: pom.xml---
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+    // Call external API for plugin generation
+    const externalApiUrl = 'http://localhost:3001';
+    console.log('Calling external API:', `${externalApiUrl}/plugin/generate`);
+    console.log('Request data:', { prompt, userId: actualUserId, name: pluginName || name, autoCompile, complexity });
     
-    <groupId>com.example</groupId>
-    <artifactId>${(pluginName || name || 'generatedplugin').toLowerCase()}</artifactId>
-    <version>1.0-SNAPSHOT</version>
-    <packaging>jar</packaging>
-    
-    <name>${pluginName || name || 'GeneratedPlugin'}</name>
-    
-    <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
-    
-    <repositories>
-        <repository>
-            <id>spigot-repo</id>
-            <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
-        </repository>
-    </repositories>
-    
-    <dependencies>
-        <dependency>
-            <groupId>org.spigotmc</groupId>
-            <artifactId>spigot-api</artifactId>
-            <version>1.20.1-R0.1-SNAPSHOT</version>
-            <scope>provided</scope>
-        </dependency>
-    </dependencies>
-    
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
-                <configuration>
-                    <source>17</source>
-                    <target>17</target>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
-</project>    `;
-
-    return new Response(mockGeneratedContent, { 
-      status: 200,
+    const response = await fetch(`${externalApiUrl}/plugin/generate`, {
+      method: 'POST',
       headers: {
-        'Content-Type': 'text/plain'
-      }
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt,
+        userId: actualUserId,
+        name: pluginName || name,
+        autoCompile,
+        complexity
+      })
     });
 
+    if (!response.ok) {
+      console.error('External API error:', response.status, response.statusText);
+      const errorText = await response.text();
+      console.error('Error details:', errorText);
+      return NextResponse.json(
+        { success: false, error: `Failed to generate plugin from external API: ${response.status} ${response.statusText}` },
+        { status: response.status }
+      );
+    }
+
+    // Parse JSON response from external API which should include both result and tokenUsage
+    const apiResponse = await response.json();
+    console.log('Plugin generation successful for user:', actualUserId);
+    console.log('API Response keys:', Object.keys(apiResponse));
+    
+    // Return the complete response including token usage analytics
+    return NextResponse.json(apiResponse);
+
   } catch (error) {
-    console.error('Error generating plugin:', error);
+    console.error('Plugin generation error:', error);
     return NextResponse.json(
-      { error: 'Failed to generate plugin' },
+      { success: false, error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     );
   }
