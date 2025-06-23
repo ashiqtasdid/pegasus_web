@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getExternalApiUrl } from '@/lib/api-config';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Forward to external API
-    const externalApiUrl = 'http://localhost:3001';
+    const externalApiUrl = getExternalApiUrl();
     const response = await fetch(`${externalApiUrl}/user/${userId}/token-usage`, {
       method: 'GET',
       headers: {

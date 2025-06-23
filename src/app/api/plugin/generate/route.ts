@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getExternalApiUrl } from '@/lib/api-config';
 import { auth } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Call external API for plugin generation
-    const externalApiUrl = 'http://localhost:3001';
+    const externalApiUrl = getExternalApiUrl();
     console.log('Calling external API:', `${externalApiUrl}/plugin/generate`);
     console.log('Request data:', { prompt, userId: actualUserId, name: pluginName || name, autoCompile, complexity });
     
