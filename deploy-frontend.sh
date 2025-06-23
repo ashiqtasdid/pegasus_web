@@ -51,6 +51,27 @@ else
     print_warning "Backend not detected on port $BACKEND_PORT. Make sure it's running."
 fi
 
+# Setup production environment variables
+print_info "Setting up production environment variables..."
+if [ -f ".env.local" ]; then
+    print_info "Backing up current .env.local to .env.local.backup"
+    cp .env.local .env.local.backup
+fi
+
+if [ -f ".env.production" ]; then
+    print_info "Copying production environment variables..."
+    cp .env.production .env.local
+    print_status "Production environment variables configured"
+    
+    # Verify critical environment variables
+    echo "✅ Environment Configuration:"
+    echo "   NODE_ENV: $(grep NODE_ENV .env.local | cut -d'=' -f2)"
+    echo "   NEXT_PUBLIC_API_BASE_URL: $(grep NEXT_PUBLIC_API_BASE_URL .env.local | cut -d'=' -f2)"
+    echo "   EXTERNAL_API_URL: $(grep EXTERNAL_API_URL .env.local | cut -d'=' -f2)"
+else
+    print_warning ".env.production not found. Using existing .env.local"
+fi
+
 # Stop existing frontend container
 print_info "Stopping existing frontend container..."
 docker stop pegasus-frontend 2>/dev/null || print_warning "No existing frontend container found"
@@ -89,11 +110,16 @@ if docker ps | grep -q "pegasus-frontend"; then
     echo "🌐 Frontend URL: http://$VPS_IP:$FRONTEND_PORT"
     echo "🔧 Backend URL: http://$VPS_IP:$BACKEND_PORT"
     echo "🔍 Auth URL: http://$VPS_IP:$FRONTEND_PORT/auth"
+    echo "📊 Token Usage API: http://$VPS_IP:$FRONTEND_PORT/api/user/token-usage"
     echo ""
     echo "📋 Quick commands:"
     echo "  View logs: docker logs pegasus-frontend -f"
     echo "  Stop: docker stop pegasus-frontend"
     echo "  Restart: docker restart pegasus-frontend"
+    echo ""
+    echo "🔧 API Architecture:"
+    echo "  Frontend serves proxy routes that forward to backend"
+    echo "  Frontend: http://$VPS_IP:$FRONTEND_PORT/api/* → Backend: http://$VPS_IP:$BACKEND_PORT/*"
     echo "==============================================="
 else
     print_error "Frontend failed to start properly"
