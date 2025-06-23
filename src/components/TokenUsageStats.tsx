@@ -21,17 +21,22 @@ interface TokenUsageData {
   promptTokens: number;
   completionTokens: number;
   requestCount: number;
-  averageTokensPerRequest: number;
-  todayUsage: number;
-  thisMonthUsage: number;
   lastRequestAt: string | null;
-  firstRequestAt: string | null;
-  dailyTrend: Array<{
+  dailyUsage?: Array<{
     date: string;
-    tokens: number;
-    requests: number;
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    requestCount: number;
   }>;
-  recentSessions: Array<{
+  monthlyUsage?: Array<{
+    month: string;
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    requestCount: number;
+  }>;
+  recentSessions?: Array<{
     operation: string;
     tokens: number;
     timestamp: string;
@@ -47,6 +52,27 @@ export function TokenUsageStats({ userId }: TokenUsageStatsProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper function to get today's usage
+  const getTodayUsage = (usage: TokenUsageData): number => {
+    if (!usage.dailyUsage || usage.dailyUsage.length === 0) return 0;
+    const today = new Date().toISOString().split('T')[0];
+    const todayData = usage.dailyUsage.find(day => day.date === today);
+    return todayData?.totalTokens || 0;
+  };
+
+  // Helper function to get this month's usage
+  const getThisMonthUsage = (usage: TokenUsageData): number => {
+    if (!usage.monthlyUsage || usage.monthlyUsage.length === 0) return 0;
+    const thisMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
+    const monthData = usage.monthlyUsage.find(month => month.month === thisMonth);
+    return monthData?.totalTokens || 0;
+  };
+
+  // Helper function to calculate average tokens per request
+  const getAverageTokensPerRequest = (usage: TokenUsageData): number => {
+    return usage.requestCount > 0 ? Math.round(usage.totalTokens / usage.requestCount) : 0;
+  };
+
   useEffect(() => {
     const loadTokenUsageData = async () => {
       try {
@@ -57,13 +83,28 @@ export function TokenUsageStats({ userId }: TokenUsageStatsProps) {
         const data = await response.json();
         
         if (response.ok) {
-          setUsage(data);
+          // Validate and sanitize the data
+          const sanitizedData: TokenUsageData = {
+            userId: data.userId || userId,
+            totalTokens: data.totalTokens || 0,
+            promptTokens: data.promptTokens || 0,
+            completionTokens: data.completionTokens || 0,
+            requestCount: data.requestCount || 0,
+            lastRequestAt: data.lastRequestAt || null,
+            dailyUsage: Array.isArray(data.dailyUsage) ? data.dailyUsage : [],
+            monthlyUsage: Array.isArray(data.monthlyUsage) ? data.monthlyUsage : [],
+            recentSessions: Array.isArray(data.recentSessions) ? data.recentSessions : []
+          };
+          
+          console.log('📊 Token usage data loaded:', sanitizedData);
+          setUsage(sanitizedData);
         } else {
+          console.error('API Error:', data);
           setError(data.error || 'Failed to load token usage');
         }
       } catch (err) {
         console.error('Error loading token usage:', err);
-        setError('Failed to load token usage');
+        setError('Failed to load token usage data');
       } finally {
         setIsLoading(false);
       }
@@ -177,7 +218,7 @@ export function TokenUsageStats({ userId }: TokenUsageStatsProps) {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(usage.todayUsage)}</div>
+            <div className="text-2xl font-bold">{formatNumber(getTodayUsage(usage))}</div>
             <p className="text-xs text-muted-foreground">
               Tokens used today
             </p>
@@ -203,7 +244,7 @@ export function TokenUsageStats({ userId }: TokenUsageStatsProps) {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{usage.averageTokensPerRequest}</div>
+            <div className="text-2xl font-bold">{getAverageTokensPerRequest(usage)}</div>
             <p className="text-xs text-muted-foreground">
               Tokens per request
             </p>
@@ -245,7 +286,7 @@ export function TokenUsageStats({ userId }: TokenUsageStatsProps) {
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">First Used:</span>
-                  <span>{formatDate(usage.firstRequestAt)}</span>
+                  <span>{usage.lastRequestAt ? formatDate(usage.lastRequestAt) : 'Never'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Activity className="h-4 w-4 text-muted-foreground" />
@@ -263,14 +304,14 @@ export function TokenUsageStats({ userId }: TokenUsageStatsProps) {
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Tokens Used:</span>
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{formatNumber(usage.thisMonthUsage)}</Badge>
+                  <Badge variant="secondary">{formatNumber(getThisMonthUsage(usage))}</Badge>
                   <Zap className="h-4 w-4 text-primary" />
                 </div>
               </div>
             </div>
 
             {/* Recent Activity */}
-            {usage.recentSessions.length > 0 && (
+            {usage.recentSessions && usage.recentSessions.length > 0 && (
               <>
                 <Separator />
                 <div>
