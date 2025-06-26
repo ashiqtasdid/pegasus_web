@@ -90,10 +90,65 @@ export function useServerManagement(userId: string) {
       const data = await response.json();
       
       if (data.success !== undefined) {
-        setAutomationStatus(data);
+        // Ensure the data has the expected structure
+        const validatedData: AutomationStatus = {
+          success: data.success || false,
+          userId: data.userId || userId,
+          hasClientApiKey: data.hasClientApiKey || false,
+          hasGlobalClientApiKey: data.hasGlobalClientApiKey || false,
+          features: {
+            serverCreation: data.features?.serverCreation || false,
+            powerControl: data.features?.powerControl || false,
+            jarUpload: data.features?.jarUpload || false,
+          },
+          server: {
+            uploadedPlugins: data.server?.uploadedPlugins || [],
+          },
+          message: data.message || '',
+          keySource: data.keySource || '',
+          requiresUserKey: data.requiresUserKey || false,
+        };
+        setAutomationStatus(validatedData);
+      } else {
+        // Set a default structure if API returns unexpected data
+        setAutomationStatus({
+          success: false,
+          userId: userId,
+          hasClientApiKey: false,
+          hasGlobalClientApiKey: false,
+          features: {
+            serverCreation: false,
+            powerControl: false,
+            jarUpload: false,
+          },
+          server: {
+            uploadedPlugins: [],
+          },
+          message: 'API returned unexpected data',
+          keySource: '',
+          requiresUserKey: true,
+        });
       }
     } catch (err) {
       console.error('Automation status load error:', err);
+      // Set a default error state
+      setAutomationStatus({
+        success: false,
+        userId: userId,
+        hasClientApiKey: false,
+        hasGlobalClientApiKey: false,
+        features: {
+          serverCreation: false,
+          powerControl: false,
+          jarUpload: false,
+        },
+        server: {
+          uploadedPlugins: [],
+        },
+        message: 'Failed to load automation status',
+        keySource: '',
+        requiresUserKey: true,
+      });
     }
   }, [userId]);
 

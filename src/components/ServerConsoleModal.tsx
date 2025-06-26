@@ -119,7 +119,7 @@ export function ServerConsoleModal({
   }, [isOpen, serverInfo, addToConsole]);
 
   useEffect(() => {
-    if (automationStatus && isOpen) {
+    if (automationStatus && automationStatus.features && isOpen) {
       const features = automationStatus.features;
       addToConsole(`Automation Status: ${features.powerControl ? 'Full Control' : 'Limited'}`, 'info');
       if (!features.powerControl || !features.jarUpload) {
@@ -134,7 +134,7 @@ export function ServerConsoleModal({
   }, [automationStatus, isOpen, addToConsole]);
 
   const handleServerAction = async (action: string) => {
-    if (!automationStatus?.features.powerControl) {
+    if (!automationStatus?.features?.powerControl) {
       addToConsole('Client API key required for server control', 'error');
       setPendingAction(action);
       setShowApiKeyModal(true);
@@ -190,7 +190,7 @@ export function ServerConsoleModal({
       return;
     }
 
-    if (!automationStatus?.features.jarUpload) {
+    if (!automationStatus?.features?.jarUpload) {
       addToConsole('Client API key required for plugin upload', 'error');
       setPendingAction('upload');
       setShowApiKeyModal(true);
@@ -354,7 +354,7 @@ export function ServerConsoleModal({
           addToConsole(`   Password: ${serverInfo.credentials.password}`, 'info');
         }
         
-        if (automationStatus?.features.powerControl) {
+        if (automationStatus?.features?.powerControl) {
           addToConsole('✅ Your API key is already configured!', 'success');
         } else {
           addToConsole('⚠️ API key not configured - limited functionality available', 'warning');
@@ -520,7 +520,7 @@ export function ServerConsoleModal({
 
                 {/* API Key Status Indicator */}
                 <div className="flex items-center gap-2">
-                  {automationStatus?.features.powerControl ? (
+                  {automationStatus?.features?.powerControl ? (
                     <>
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                       <span className="text-sm text-green-600">API Key Active</span>
@@ -604,9 +604,8 @@ export function ServerConsoleModal({
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Client API Key Management */}
                 <div className="space-y-2">
-                  <h4 className="text-sm font-semibold">API Key Setup</h4>
-                  <div className="space-y-2">
-                    {automationStatus?.features.powerControl ? (
+                  <h4 className="text-sm font-semibold">API Key Setup</h4>                  <div className="space-y-2">
+                    {automationStatus?.features?.powerControl ? (
                       <div className="flex items-center gap-2 text-green-600 text-sm">
                         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                         API Key Configured
@@ -617,7 +616,6 @@ export function ServerConsoleModal({
                         API Key Required
                       </div>
                     )}
-                    
 
                     
                     <Button
@@ -626,7 +624,7 @@ export function ServerConsoleModal({
                       onClick={() => setShowApiKeyModal(true)}
                       className="w-full"
                     >
-                      {automationStatus?.features.powerControl ? 'Update' : 'Setup'} API Key
+                      {automationStatus?.features?.powerControl ? 'Update' : 'Setup'} API Key
                     </Button>
                   </div>
                 </div>
@@ -817,11 +815,11 @@ export function ServerConsoleModal({
                       <>
                         <div className="flex items-center gap-2">
                           <Terminal className="w-4 h-4 text-green-500" />
-                          <span>Power: {automationStatus.features.powerControl ? 'Enabled' : 'Disabled'}</span>
+                          <span>Power: {automationStatus?.features?.powerControl ? 'Enabled' : 'Disabled'}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Upload className="w-4 h-4 text-orange-500" />
-                          <span>Upload: {automationStatus.features.jarUpload ? 'Enabled' : 'Disabled'}</span>
+                          <span>Upload: {automationStatus?.features?.jarUpload ? 'Enabled' : 'Disabled'}</span>
                         </div>
                       </>
                     )}
