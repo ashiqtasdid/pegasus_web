@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { prompt, pluginName, name, userId, autoCompile = true, complexity = 5 } = body;
+    const { prompt, pluginName, name, userId, email, autoCompile = true, complexity = 5 } = body;
 
     // Validate that the user can only generate plugins for themselves
     const sessionUserId = session?.user?.id || 'testuser';
@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         prompt,
         userId: actualUserId,
+        email: email || session?.user?.email,
         name: pluginName || name,
         autoCompile,
         complexity

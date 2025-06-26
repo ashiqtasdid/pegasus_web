@@ -21,6 +21,7 @@ function EditorPageContent() {
   
   // Use URL userId if provided, otherwise fall back to session user ID
   const userId = urlUserId || (isDevelopmentMode ? 'testuser' : session?.user?.id);
+  const userEmail = isDevelopmentMode ? 'testuser@example.com' : session?.user?.email;
 
   useEffect(() => {
     setMounted(true);
@@ -52,7 +53,7 @@ function EditorPageContent() {
     return null; // Will redirect to auth
   }
   
-  return <VSCodeLayout pluginId={pluginId} userId={userId} />;
+  return <VSCodeLayout pluginId={pluginId} userId={userId} userEmail={userEmail} />;
 }
 
 export default function EditorPage() {

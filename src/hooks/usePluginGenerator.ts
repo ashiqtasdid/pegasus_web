@@ -5,6 +5,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 interface FormData {
   prompt: string;
   userId: string;
+  email?: string;
   pluginName?: string;
 }
 
@@ -47,10 +48,30 @@ interface TokenUsage {
   tokensUsedThisRequest?: number;
 }
 
+interface ServerCredentials {
+  panelUrl: string;
+  username: string;
+  password: string;
+  email?: string;
+}
+
+interface ServerDetails {
+  id: number;
+  identifier: string;
+  name: string;
+  status: string;
+}
+
 interface Results {
   result: string;
   requestData: FormData & { autoCompile: boolean };
   tokenUsage?: TokenUsage;
+  serverDetails?: ServerDetails;
+  credentials?: ServerCredentials;
+  needsClientApiKey?: boolean;
+  pluginName?: string;
+  success?: boolean;
+  error?: string;
 }
 
 export function usePluginGenerator() {
@@ -61,6 +82,8 @@ export function usePluginGenerator() {
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [projectStatus, setProjectStatus] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [serverCredentials, setServerCredentials] = useState<ServerCredentials | null>(null);
+  const [serverDetails, setServerDetails] = useState<ServerDetails | null>(null);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
   const loadProjectFiles = useCallback(async (userId: string, pluginName: string, isAutoRefresh = false) => {
@@ -178,7 +201,8 @@ export function usePluginGenerator() {
     const requestData = {
       ...data,
       name: data.pluginName || undefined,
-      autoCompile: true
+      autoCompile: true,
+      complexity: 5
     };
 
     setIsLoading(true);
@@ -186,12 +210,20 @@ export function usePluginGenerator() {
     setProjectFiles(null);
 
     try {
-      const response = await fetch(`${apiBase}/plugin/generate`, {
+      // Follow the API documentation structure exactly
+      const response = await fetch('/api/plugin/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify({
+          prompt: data.prompt,
+          userId: data.userId,
+          email: data.email, // Include email as per documentation
+          name: data.pluginName,
+          autoCompile: true,
+          complexity: 5
+        })
       });
 
       if (!response.ok) {
@@ -199,8 +231,13 @@ export function usePluginGenerator() {
       }
 
       const responseData = await response.json();
-      const result = responseData.result || responseData;
+      
+      // Check for API documentation response structure
+      const result = responseData.result || responseData.message || 'Plugin generation completed';
       const tokenUsage = responseData.tokenUsage;
+      const needsClientApiKey = responseData.needsClientApiKey;
+      const server = responseData.server;
+      const pluginName = responseData.pluginName || data.pluginName;
       
       // Log token usage for analytics
       if (tokenUsage) {
@@ -219,33 +256,82 @@ export function usePluginGenerator() {
           }));
         }
       }
+
+      // Handle client API key requirement
+      if (needsClientApiKey) {
+        console.log('⚠️ Client API key required for full automation');
+        // Dispatch event to show client API key modal
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('client-api-key-required', {
+            detail: {
+              userId: data.userId,
+              context: 'plugin-generation'
+            }
+          }));
+        }
+      }
       
-      const newResults = { result, requestData, tokenUsage };
+      const newResults = { 
+        result, 
+        requestData, 
+        tokenUsage,
+        needsClientApiKey,
+        pluginName
+      };
       setResults(newResults);
 
+      // Extract server details and credentials if present (following API documentation structure)
+      if (server) {
+        console.log('🏗️ Server information received:', server);
+        setServerDetails(server);
+        
+        // Dispatch server creation event with details
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('server-created', {
+            detail: {
+              server,
+              userId: data.userId,
+              needsClientApiKey
+            }
+          }));
+        }
+      }
+
+      // Check if we have credentials in the response (may be embedded in the message)
+      if (responseData.credentials) {
+        console.log('🔐 Server credentials received');
+        setServerCredentials(responseData.credentials);
+      }
+
       // Store current project info
-      const extractedPluginName = data.pluginName || extractPluginNameFromResult(result);
+      const extractedPluginName = pluginName || extractPluginNameFromResult(result);
       const newProject = {
         userId: data.userId,
         pluginName: extractedPluginName
       };
-      setCurrentProject(newProject);      // Load project files if generation was successful
-      if (result.includes('COMPILATION SUCCESSFUL') || result.includes('Plugin project generated')) {
+      setCurrentProject(newProject);
+
+      // Load project files if generation was successful
+      if (result.includes('COMPILATION SUCCESSFUL') || 
+          result.includes('Plugin project generated') ||
+          result.includes('successfully') ||
+          responseData.success !== false) {
+        
         // Dispatch event to notify about plugin generation
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('plugin-generated', {
             detail: {
               pluginName: newProject.pluginName,
               userId: newProject.userId,
-              success: true
+              success: true,
+              server,
+              needsClientApiKey
             }
           }));
         }
         
-        // Note: Plugin files are now handled by MongoDB
-        // No local database saving is performed
         console.log('✅ Plugin generated successfully:', newProject.pluginName);
-        console.log('MongoDB will handle plugin file persistence');
+        console.log('📁 Loading project files...');
         
         // Load files and start auto-refresh
         setTimeout(() => {
@@ -256,15 +342,19 @@ export function usePluginGenerator() {
 
     } catch (error) {
       console.error('Generation error:', error);
-      // Handle error state
+      // Handle error state following API documentation error format
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setResults({
         result: `Error: ${errorMessage}`,
-        requestData
-      });    } finally {
+        requestData,
+        success: false,
+        error: errorMessage
+      });
+    } finally {
       setIsLoading(false);
     }
-  }, [apiBase, loadProjectFiles, startAutoRefresh]);
+  }, [loadProjectFiles, startAutoRefresh]);
+  
   const downloadJar = useCallback(async (userId: string, pluginName: string) => {
     try {
       // Check if JAR is available
@@ -572,6 +662,8 @@ For support or modifications, refer to the generated source code.
     chatMessages,
     projectStatus,
     lastRefresh,
+    serverCredentials,
+    serverDetails,
     generatePlugin,
     downloadJar,
     downloadInstructions,

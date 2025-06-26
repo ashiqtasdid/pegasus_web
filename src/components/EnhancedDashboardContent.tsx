@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -7,6 +8,7 @@ import { DashboardPluginForm } from './dashboard/DashboardPluginForm';
 import { DashboardChatSection } from './dashboard/DashboardChatSection';
 import { VSCodeFileExplorer } from './dashboard/VSCodeFileExplorer';
 import { DashboardStatsCards } from './dashboard/DashboardStatsCards';
+import { ServerCredentialsCard } from './ServerCredentialsCard';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
@@ -57,6 +59,20 @@ interface Message {
   };
 }
 
+interface ServerCredentials {
+  panelUrl: string;
+  username: string;
+  password: string;
+  email?: string;
+}
+
+interface ServerDetails {
+  id: number;
+  identifier: string;
+  name: string;
+  status: string;
+}
+
 export type DashboardView = 'overview' | 'generate' | 'chat' | 'files' | 'projects' | 'history' | 'settings';
 
 interface EnhancedDashboardContentProps {
@@ -64,6 +80,8 @@ interface EnhancedDashboardContentProps {
   results: Results | null;
   currentProject: CurrentProject | null;
   projectFiles: ProjectData | null;
+  serverCredentials: ServerCredentials | null;
+  serverDetails: ServerDetails | null;
   generatePlugin: (data: { prompt: string; userId: string; pluginName?: string }) => void;
   downloadJar: (userId: string, pluginName: string) => void;
   downloadInstructions: () => void;
@@ -84,6 +102,8 @@ export function EnhancedDashboardContent(props: EnhancedDashboardContentProps) {
     results,
     currentProject,
     projectFiles,
+    serverCredentials,
+    serverDetails,
     generatePlugin,
     downloadJar,
     downloadInstructions,
@@ -97,8 +117,25 @@ export function EnhancedDashboardContent(props: EnhancedDashboardContentProps) {
     onViewChange
   } = props;
 
+  const [showServerCredentials, setShowServerCredentials] = useState(false);
+
+  // Show server credentials when they become available
+  useEffect(() => {
+    if (serverCredentials && serverDetails) {
+      setShowServerCredentials(true);
+    }
+  }, [serverCredentials, serverDetails]);
+
   const renderOverview = () => (
     <div className="space-y-8">
+      {/* Server Credentials Card */}
+      <ServerCredentialsCard
+        serverDetails={serverDetails || undefined}
+        credentials={serverCredentials || undefined}
+        visible={showServerCredentials}
+        onClose={() => setShowServerCredentials(false)}
+      />
+
       {/* Welcome Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">

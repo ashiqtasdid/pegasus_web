@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { FileExplorer, FileNode } from './FileExplorer';
 import { MonacoEditor } from './MonacoEditor';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -29,11 +31,16 @@ import {
 import { usePluginSync } from '@/hooks/usePluginSync';
 import { usePluginGenerator } from '@/hooks/usePluginGenerator';
 import { UserMenu } from './UserMenu';
+import { ServerConsoleModal } from './ServerConsoleModal';
+import { ServerStatus } from './ServerStatus';
+import { ServerConsoleDebugger } from '@/lib/server-console-debug';
+import { ServerConsoleTroubleshooter } from './ServerConsoleTroubleshooter';
 
 interface VSCodeLayoutProps {
   className?: string;
   pluginId?: string | null;
   userId?: string | null;
+  userEmail?: string | null;
 }
 
 interface ChatMessage {
@@ -48,10 +55,129 @@ interface ChatMessage {
   };
 }
 
-export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutProps) {
+export function VSCodeLayout({ className = '', pluginId, userId, userEmail }: VSCodeLayoutProps) {
+  const router = useRouter();
   const [selectedFile, setSelectedFile] = useState<FileNode | null>(null);
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
+  const [isServerConsoleOpen, setIsServerConsoleOpen] = useState(false);
+  const [buttonClickVisual, setButtonClickVisual] = useState(false);
+  const [showTroubleshooter, setShowTroubleshooter] = useState(false);
+  const consoleToggleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Debug console state changes
+  useEffect(() => {
+    console.log('Server console state changed:', isServerConsoleOpen);
+  }, [isServerConsoleOpen]);
+
+  // Debug state for development
+  const [debugState, setDebugState] = useState(ServerConsoleDebugger.getInstance().getState());
+  
+  // Subscribe to debug state changes
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const unsubscribe = ServerConsoleDebugger.getInstance().subscribe(setDebugState);
+      return unsubscribe;
+    }
+  }, []);
+
+  // Debug component to track state
+  const DebugInfo = () => {
+    if (process.env.NODE_ENV !== 'development') return null;
+    
+    return (
+      <div className="fixed top-4 right-4 bg-black text-white p-2 text-xs z-50 rounded shadow-lg">
+        <div className="font-bold mb-1">Debug State</div>
+        <div className={`${isServerConsoleOpen ? 'text-green-400' : 'text-red-400'}`}>
+          Server Console: {isServerConsoleOpen ? 'OPEN' : 'CLOSED'}
+        </div>
+        <div>Left Sidebar: {isLeftSidebarOpen ? 'OPEN' : 'CLOSED'}</div>
+        <div>Right Sidebar: {isRightSidebarOpen ? 'OPEN' : 'CLOSED'}</div>
+        <div>Plugin: {pluginId || 'None'}</div>
+        <div>User: {userId || 'None'}</div>
+        <div className="mt-1 pt-1 border-t border-gray-600 text-xs">
+          <div>Press Ctrl+` to toggle console</div>
+          <div>Click Terminal button to toggle</div>
+          <div className="text-yellow-300">Ctrl+Shift+T for troubleshooter</div>
+          <div className="text-cyan-300">Console opens as modal window</div>
+          {debugState.lastToggleSource && (
+            <div className="mt-1 text-yellow-300">
+              Last: {debugState.lastToggleSource} 
+              <br />Clicks: {debugState.clickCount}, KB: {debugState.keyboardShortcutCount}
+            </div>
+          )}
+          {buttonClickVisual && (
+            <div className="text-green-400 font-bold">🟢 CLICK DETECTED!</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Enhanced toggle function for server console with fallback mechanism
+  const toggleServerConsole = useCallback((source: string = 'unknown') => {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] Toggling server console from source: ${source}`);
+    
+    // Clear any pending timeout
+    if (consoleToggleTimeoutRef.current) {
+      clearTimeout(consoleToggleTimeoutRef.current);
+    }
+    
+    setIsServerConsoleOpen(prev => {
+      const newState = !prev;
+      console.log(`[${timestamp}] Server console state: ${prev} -> ${newState}`);
+      
+      // Record debug information
+      ServerConsoleDebugger.getInstance().recordToggle(source, newState);
+      
+      // Fallback: if state doesn't change within 100ms, try again
+      if (source.includes('click')) {
+        consoleToggleTimeoutRef.current = setTimeout(() => {
+          console.log(`[${timestamp}] Fallback: Checking if toggle worked...`);
+          setIsServerConsoleOpen(current => {
+            if (current === prev) {
+              console.log(`[${timestamp}] Fallback: State didn't change, forcing toggle`);
+              ServerConsoleDebugger.getInstance().recordToggle(`${source}-fallback`, !current);
+              return !current;
+            }
+            return current;
+          });
+        }, 100);
+      }
+      
+      return newState;
+    });
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (consoleToggleTimeoutRef.current) {
+        clearTimeout(consoleToggleTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Keyboard shortcut for server console (Ctrl+`)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === '`') {
+        e.preventDefault();
+        console.log('Keyboard shortcut triggered for server console');
+        toggleServerConsole('keyboard');
+      }
+      // Troubleshooter shortcut (Ctrl+Shift+T)
+      if (e.ctrlKey && e.shiftKey && e.key === 'T') {
+        e.preventDefault();
+        console.log('Opening server console troubleshooter');
+        setShowTroubleshooter(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toggleServerConsole]);
   const [leftSidebarView, setLeftSidebarView] = useState<'explorer' | 'plugins'>('explorer');
   const [mounted, setMounted] = useState(false);  const [pluginFiles, setPluginFiles] = useState<FileNode[]>([]);
   const [isAutoRefreshEnabled, setIsAutoRefreshEnabled] = useState(false);
@@ -59,6 +185,18 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
   const [autoRefreshInterval, setAutoRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [isLoadingPlugin, setIsLoadingPlugin] = useState(false);
   const [lastLoadedPluginId, setLastLoadedPluginId] = useState<string | null>(null);
+  const [serverCredentials, setServerCredentials] = useState<{
+    panelUrl: string;
+    username: string;
+    password: string;
+    email?: string;
+  } | null>(null);
+  const [serverDetails, setServerDetails] = useState<{
+    id: number;
+    identifier: string;
+    name: string;
+    status: string;
+  } | null>(null);
     // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
@@ -598,6 +736,44 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
     }
   };
 
+  // Handle server creation from ServerConsole
+  const handleServerCreated = (serverDetails: {
+    id: number;
+    identifier: string;
+    name: string;
+    status: string;
+  }, credentials: {
+    panelUrl: string;
+    username: string;
+    password: string;
+    email?: string;
+  }) => {
+    setServerDetails(serverDetails);
+    setServerCredentials(credentials);
+    showSuccess('Server Created', `Server "${serverDetails.name}" created successfully!`);
+    
+    // Log for debugging and mark variables as used
+    console.log('Current server state:', { 
+      serverDetails: serverDetails ? `Server ${serverDetails.name} (${serverDetails.status})` : 'None',
+      serverCredentials: serverCredentials ? `Panel: ${serverCredentials.panelUrl}` : 'None'
+    });
+  };
+
+  // Log server state for debugging (marks variables as used)
+  useEffect(() => {
+    if (serverDetails || serverCredentials) {
+      console.log('Server state updated:', { 
+        serverDetails: serverDetails ? `${serverDetails.name} (${serverDetails.status})` : null,
+        serverCredentials: serverCredentials ? `${serverCredentials.panelUrl}` : null
+      });
+    }
+  }, [serverDetails, serverCredentials]);
+
+  // Navigation handler
+  const handleNavigateToDashboard = () => {
+    router.push('/dashboard');
+  };
+
   if (!mounted) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -610,6 +786,9 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
   }
   return (
     <div className={`flex flex-col h-screen bg-background ${className}`}>
+      {/* Debug Info */}
+      <DebugInfo />
+      
       {/* Development Mode Banner */}
       {isDevelopmentMode && (
         <div className="bg-orange-500 text-white px-4 py-1 text-sm text-center">
@@ -620,6 +799,29 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
       {/* Top Activity Bar */}
       <div className="flex items-center justify-between h-12 px-4 border-b bg-muted/50">
         <div className="flex items-center gap-4">
+          {/* Pegasus Logo/Brand */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleNavigateToDashboard}
+            className="h-8 px-3 text-base font-bold hover:bg-primary/10 transition-all duration-200 hover:scale-105 flex items-center gap-2"
+            title="Back to Dashboard"
+          >
+            <Image 
+              src="/pegasus-logo.svg" 
+              alt="Pegasus Logo" 
+              width={20}
+              height={20}
+              className="w-5 h-5" 
+            />
+            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Pegasus
+            </span>
+          </Button>
+          
+          {/* Separator */}
+          <div className="h-4 w-px bg-border" />
+          
           {/* Left sidebar toggle */}
           <Button
             variant="ghost"
@@ -648,6 +850,45 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
               onClick={() => setLeftSidebarView('plugins')}
             >
               <Package className="w-4 h-4" />
+            </Button>
+            <Button 
+              variant={isServerConsoleOpen ? 'default' : 'ghost'} 
+              size="sm" 
+              className={`h-8 w-8 p-0 relative z-20 transition-all duration-150 ${
+                isServerConsoleOpen ? 'bg-blue-600 text-white' : ''
+              } ${
+                buttonClickVisual ? 'ring-2 ring-green-400 bg-green-500 text-white' : ''
+              }`}
+              title={`Server Console (Ctrl+\`) - ${isServerConsoleOpen ? 'Close' : 'Open'}`}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Visual feedback
+                setButtonClickVisual(true);
+                setTimeout(() => setButtonClickVisual(false), 200);
+                
+                toggleServerConsole('button-click');
+              }}
+              onDoubleClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Server console button double-clicked - forcing toggle');
+                
+                // Visual feedback
+                setButtonClickVisual(true);
+                setTimeout(() => setButtonClickVisual(false), 300);
+                
+                toggleServerConsole('button-double-click');
+              }}
+              onMouseDown={() => {
+                console.log('Server console button mouse down at:', new Date().toISOString());
+              }}
+              onMouseUp={() => {
+                console.log('Server console button mouse up at:', new Date().toISOString());
+              }}
+            >
+              <Terminal className="w-4 h-4" />
             </Button>
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Search">
               <Search className="w-4 h-4" />
@@ -697,7 +938,7 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
                 variant="ghost" 
                 size="sm" 
                 className="h-8 w-8 p-0" 
-                title="Recompile Plugin"
+                  title="Recompile Plugin"
                 onClick={handleRecompilePlugin}
                 disabled={isLoadingPlugin || isRecompiling}
               >
@@ -780,56 +1021,79 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
               />
             </ErrorBoundary>
           </div>
-        )}{/* Center - Editor */}
+        )}        {/* Center - Editor */}
         <div className="flex-1 flex flex-col min-w-0 relative z-10 bg-background">
-          {isLoadingPlugin ? (
-            <div className="flex-1 flex items-center justify-center bg-muted/20">
-              <div className="text-center max-w-md">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <h2 className="text-xl font-semibold mb-2">Loading Plugin Files</h2>
-                <p className="text-muted-foreground mb-6">
-                  {pluginId ? `Loading files for plugin: ${pluginId}` : 'Fetching plugin data...'}
-                </p>
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  <p>• Connecting to plugin database</p>
-                  <p>• Loading file structure</p>
-                  <p>• Preparing Monaco editor</p>
+          {/* Main Editor Area */}
+          <div className="flex-1 flex flex-col min-w-0">
+            {isLoadingPlugin ? (
+              <div className="flex-1 flex items-center justify-center bg-muted/20">
+                <div className="text-center max-w-md">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <h2 className="text-xl font-semibold mb-2">Loading Plugin Files</h2>
+                  <p className="text-muted-foreground mb-6">
+                    {pluginId ? `Loading files for plugin: ${pluginId}` : 'Fetching plugin data...'}
+                  </p>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p>• Connecting to plugin database</p>
+                    <p>• Loading file structure</p>
+                    <p>• Preparing Monaco editor</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : selectedFile ? (            <MonacoEditor
-              file={{
-                name: selectedFile.name,
-                content: selectedFile.content || '',
-                language: selectedFile.language || 'javascript'
-              }}
-              onSave={handleFileSave}
-              userId={userId}
-              pluginName={pluginId} // pluginId is actually the plugin name
-            />
-          ) : (
-            <div className="flex-1 flex items-center justify-center bg-muted/20">
-              <div className="text-center max-w-md">
-                <LayoutTemplate className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                <h2 className="text-xl font-semibold mb-2">Welcome to Pegasus</h2>
-                <p className="text-muted-foreground mb-6">
-                  {pluginId 
-                    ? "Plugin loaded! Select a file from the explorer to start editing." 
-                    : "Select a file from the explorer to start editing, or use the AI assistant to generate new code."
-                  }
-                </p>                <div className="space-y-2 text-sm text-muted-foreground">
-                  <p>• Browse files in the right panel</p>
-                  <p>• Chat with AI assistant on the left</p>
-                  <p>• Full Monaco editor with syntax highlighting</p>
-                  <p>• VS Code-like interface and shortcuts</p>
-                  {pluginId && pluginFiles.length > 0 && (
-                    <p className="text-blue-600 font-medium">• {pluginFiles.length} files loaded and ready</p>
-                  )}
+            ) : selectedFile ? (
+              <MonacoEditor
+                file={{
+                  name: selectedFile.name,
+                  content: selectedFile.content || '',
+                  language: selectedFile.language || 'javascript'
+                }}
+                onSave={handleFileSave}
+                userId={userId}
+                pluginName={pluginId} // pluginId is actually the plugin name
+              />
+            ) : (
+              <div className="flex-1 flex items-center justify-center bg-muted/20">
+                <div className="text-center max-w-md">
+                  <LayoutTemplate className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                  <h2 className="text-xl font-semibold mb-2">Welcome to Pegasus</h2>
+                  <p className="text-muted-foreground mb-6">
+                    {pluginId 
+                      ? "Plugin loaded! Select a file from the explorer to start editing." 
+                      : "Select a file from the explorer to start editing, or use the AI assistant to generate new code."
+                    }
+                  </p>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p>• Browse files in the right panel</p>
+                    <p>• Chat with AI assistant on the left</p>
+                    <p>• Full Monaco editor with syntax highlighting</p>
+                    <p>• VS Code-like interface and shortcuts</p>
+                    <p>• Server console for Minecraft management</p>
+                    {pluginId && pluginFiles.length > 0 && (
+                      <p className="text-blue-600 font-medium">• {pluginFiles.length} files loaded and ready</p>
+                    )}
+                  </div>
+                  
+                  {/* Quick Actions */}
+                  <div className="mt-6 space-y-2">
+                    <Button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Open Server Console button clicked');
+                        setIsServerConsoleOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2"
+                      variant="outline"
+                    >
+                      <Terminal className="h-4 w-4" />
+                      Open Server Console
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>        {/* Right Sidebar - File Explorer or Plugin Manager */}
+            )}
+          </div>
+        </div>{/* Right Sidebar - File Explorer or Plugin Manager */}
         {isRightSidebarOpen && (
           <div className="w-80 flex-shrink-0 relative z-10 bg-background border-l">            {leftSidebarView === 'explorer' ? (
               <FileExplorer 
@@ -885,6 +1149,7 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
         <div className="flex items-center gap-4">
           <span>Ln 1, Col 1</span>
           <span>Spaces: 2</span>
+          {userId && <ServerStatus userId={userId} />}
           <span>{userId ? `User: ${userId}` : 'Anonymous'}</span>
           <span>AI Assistant: Online</span>
         </div>
@@ -895,6 +1160,32 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
         notifications={notifications}
         onDismiss={dismissNotification}
       />
+
+      {/* Server Console Modal */}
+      {userId && (
+        <ServerConsoleModal
+          userId={userId}
+          currentPlugin={pluginId || undefined}
+          userEmail={userEmail || undefined}
+          isOpen={isServerConsoleOpen}
+          onClose={() => setIsServerConsoleOpen(false)}
+          onLog={(message: string, type: 'info' | 'success' | 'error' | 'warning') => {
+            console.log(`[${type.toUpperCase()}] ${message}`);
+          }}
+          onServerCreated={handleServerCreated}
+        />
+      )}
+
+      {/* Troubleshooter Overlay */}
+      {showTroubleshooter && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <ServerConsoleTroubleshooter
+            isConsoleOpen={isServerConsoleOpen}
+            onToggleConsole={() => toggleServerConsole('troubleshooter')}
+            onClose={() => setShowTroubleshooter(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }

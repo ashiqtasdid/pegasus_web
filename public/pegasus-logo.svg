@@ -1,0 +1,51 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Pegasus Wing -->
+  <path d="M8 12C8 12 12 8 16 10C20 12 24 8 24 8C24 8 20 16 16 16C12 16 8 12 8 12Z" fill="url(#wing-gradient)" opacity="0.8"/>
+  
+  <!-- Pegasus Body -->
+  <ellipse cx="16" cy="20" rx="6" ry="8" fill="url(#body-gradient)"/>
+  
+  <!-- Pegasus Head -->
+  <circle cx="16" cy="12" r="4" fill="url(#head-gradient)"/>
+  
+  <!-- Pegasus Horn (like a unicorn horn for mythical feel) -->
+  <path d="M16 8L14 4L16 5L18 4L16 8Z" fill="url(#horn-gradient)"/>
+  
+  <!-- Eye -->
+  <circle cx="17" cy="11" r="1" fill="white"/>
+  <circle cx="17.5" cy="10.5" r="0.5" fill="#1e40af"/>
+  
+  <!-- Mane -->
+  <path d="M12 10C10 8 10 12 12 14C14 12 12 10 12 10Z" fill="url(#mane-gradient)" opacity="0.7"/>
+  <path d="M20 10C22 8 22 12 20 14C18 12 20 10 20 10Z" fill="url(#mane-gradient)" opacity="0.7"/>
+  
+  <!-- Tail -->
+  <path d="M10 24C8 26 12 28 14 26C12 24 10 24 10 24Z" fill="url(#tail-gradient)" opacity="0.8"/>
+  
+  <defs>
+    <linearGradient id="wing-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="body-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e40af;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7c3aed;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="head-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9333ea;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="horn-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f59e0b;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="mane-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="tail-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+</svg>
