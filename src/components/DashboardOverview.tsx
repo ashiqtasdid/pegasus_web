@@ -83,6 +83,11 @@ export function DashboardOverview() {
   const currentUserId = isDevelopmentMode 
     ? 'testuser' 
     : (session?.user?.id || userId || 'testuser');
+  
+  // Get user email for display purposes
+  const currentUserEmail = isDevelopmentMode 
+    ? 'test@example.com' 
+    : (session?.user?.email || 'User');
 
   useEffect(() => {
     loadPlugins();
@@ -137,7 +142,7 @@ export function DashboardOverview() {
   }return (
     <div className="space-y-8">      {/* Welcome Section */}
       <WelcomeCard 
-        userName={currentUserId}
+        userName={currentUserEmail}
         onCreatePlugin={handleCreateNewPlugin}
         onQuickStart={handleCreateNewPlugin}
       />
