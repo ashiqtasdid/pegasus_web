@@ -8,9 +8,10 @@ export function getExternalApiUrl(): string {
     return process.env.EXTERNAL_API_URL;
   }
 
-  // Fallback based on environment
-  if (process.env.NODE_ENV === 'production') {
-    return 'http://37.114.41.124:3001';
+  // For server-side calls, prioritize BACKEND_URL over NEXT_PUBLIC_API_BASE_URL
+  const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (backendUrl) {
+    return backendUrl;
   }
   
   return 'http://localhost:3001';
@@ -20,9 +21,6 @@ export function getExternalApiUrl(): string {
  * Get the base URL for client-side API calls (points to Next.js proxy routes)
  */
 export function getClientApiUrl(): string {
-  if (process.env.NODE_ENV === 'production') {
-    return 'http://37.114.41.124:3000/api';
-  }
-  
-  return 'http://localhost:3000/api';
+  const baseUrl = process.env.NEXT_PUBLIC_BETTER_AUTH_URL || 'http://localhost:3000';
+  return `${baseUrl}/api`;
 }

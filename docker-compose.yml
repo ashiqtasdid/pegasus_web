@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Your Next.js frontend service
+  # Pegasus Frontend Service
   frontend:
     build:
       context: .
@@ -15,15 +15,13 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - HOSTNAME=0.0.0.0
+      # Backend connection - uses host.docker.internal to reach host machine from container
+      - BACKEND_URL=http://host.docker.internal:3001
+      - NEXT_PUBLIC_API_BASE_URL=http://host.docker.internal:3001
     restart: unless-stopped
-    networks:
-      - pegasus-network
-
-networks:
-  pegasus-network:
-    driver: bridge
-
-# Optional: Add volumes for persistent data
-volumes:
-  app-data:
-    driver: local
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

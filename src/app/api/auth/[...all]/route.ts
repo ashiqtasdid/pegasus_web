@@ -6,8 +6,10 @@ const handlers = toNextJsHandler(auth);
 
 // Get the allowed origin based on environment and request
 const getAllowedOrigin = (request?: NextRequest) => {
-  if (process.env.NODE_ENV === 'production') {
-    return 'http://37.114.41.124:3000';
+  // Use environment variable if available
+  const authUrl = process.env.NEXT_PUBLIC_BETTER_AUTH_URL || process.env.BETTER_AUTH_URL;
+  if (authUrl) {
+    return authUrl;
   }
     // In development, use the request's origin if available, fallback to localhost:3000
   if (request) {
