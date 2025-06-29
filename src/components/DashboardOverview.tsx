@@ -18,10 +18,7 @@ import {
   Calendar,
   TrendingUp,
   Download,
-  Sparkles,
-  Zap,
   Code2,
-  ArrowRight
 } from 'lucide-react';
 import { usePluginGenerator } from '@/hooks/usePluginGenerator';
 import { WelcomeCard } from './WelcomeCard';
