@@ -14,6 +14,25 @@ const nextConfig: NextConfig = {
     DEVELOP: process.env.DEVELOP,
   },
   
+  // Configure webpack to handle MongoDB optional dependencies
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Ignore these server-only modules on the client
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        'mongodb-client-encryption': false,
+        'aws4': false,
+        'gcp-metadata': false,
+        'snappy': false,
+        'socks': false,
+        'kerberos': false,
+        '@mongodb-js/zstd': false,
+        '@aws-sdk/credential-providers': false,
+      };
+    }
+    return config;
+  },
+  
   // Configure port and hostname
   experimental: {
     serverActions: {

@@ -1,47 +1,41 @@
-/**
- * Enhanced Server Manager Component
- * Follows patterns from PEGASUS_API_DOCUMENTATION.md
- */
-
 import React, { useState, useEffect, useCallback } from 'react';
-import { usePegasus } from '@/hooks/usePegasus';
 import ClientApiKeyManager from './ClientApiKeyManager';
+import { usePegasus } from '@/hooks/usePegasus';
 
-interface ServerManagerProps {
-  userId: string;
-  onServerCreated?: (server: ServerInfo) => void;
-}
-
+// Define the interfaces that were missing
 interface ServerInfo {
   id: number;
-  identifier: string;
   name: string;
+  identifier: string;
   status: string;
-  uuid: string;
   limits?: {
-    memory: number;
-    disk: number;
-    cpu: number;
+    memory?: number;
+    disk?: number;
+    cpu?: number;
   };
 }
 
 interface AutomationStatus {
-  success: boolean;
   hasClientApiKey: boolean;
   features: {
-    serverCreation: boolean;
     powerControl: boolean;
     jarUpload: boolean;
+    serverCreation: boolean;
   };
   server?: {
-    serverId: string;
-    serverUuid: string;
-    uploadedPlugins: string[];
+    uploadedPlugins?: string[];
   };
-  message: string;
 }
 
-export default function ServerManager({ userId, onServerCreated }: ServerManagerProps) {
+interface EnhancedServerManagerProps {
+  userId: string;
+  onServerCreated?: (server: ServerInfo) => void;
+}
+
+export const EnhancedServerManager: React.FC<EnhancedServerManagerProps> = ({ 
+  userId, 
+  onServerCreated 
+}) => {
   const [server, setServer] = useState<ServerInfo | null>(null);
   const [automationStatus, setAutomationStatus] = useState<AutomationStatus | null>(null);
   const [showClientKeyModal, setShowClientKeyModal] = useState(false);

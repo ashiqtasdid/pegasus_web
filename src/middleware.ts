@@ -9,7 +9,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/auth') || 
     pathname.startsWith('/api/') ||
     pathname.startsWith('/_next/') ||
-    pathname.startsWith('/favicon.ico')
+    pathname.startsWith('/favicon.ico') ||
+    pathname.startsWith('/banned') // Allow access to banned page
   ) {
     return NextResponse.next();
   }
@@ -22,6 +23,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth', request.url));
   }
 
+  // For now, let the request through
+  // Ban checking will be handled by individual pages/components
+  // since Edge Runtime doesn't support MongoDB's Node.js dependencies
   return NextResponse.next();
 }
 

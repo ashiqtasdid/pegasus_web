@@ -60,6 +60,34 @@ export const auth = betterAuth({
         type: "string",
         required: false,
       },
+      tokensUsed: {
+        type: "number",
+        required: false,
+        defaultValue: 0,
+      },
+      tokenLimit: {
+        type: "number",
+        required: false,
+        defaultValue: 10000, // Default token limit for new users
+      },
+      isAdmin: {
+        type: "boolean",
+        required: false,
+        defaultValue: false,
+      },
+      isBanned: {
+        type: "boolean",
+        required: false,
+        defaultValue: false,
+      },
+      bannedAt: {
+        type: "date",
+        required: false,
+      },
+      banReason: {
+        type: "string",
+        required: false,
+      },
     },
   },
   

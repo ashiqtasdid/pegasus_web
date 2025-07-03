@@ -6,33 +6,53 @@ import { useSession } from '@/lib/auth-client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   Plus, 
   Edit, 
   Package,
   Code,
   FileText,
-  Rocket,
-  ChevronRight,
-  Calendar,
   TrendingUp,
   Download,
   Code2,
+  Server,
+  Terminal,
+  Search,
+  Bell,
+  Settings,
+  Activity,
+  Users,
+  BarChart3,
+  Zap,
+
+  ArrowUp,
+  MoreVertical,
+  Filter,
+  Layout,
+  Sparkles,
+  Database,
+  
+  Cpu,
+  HardDrive,
+  Wifi,
+  
 } from 'lucide-react';
 import { usePluginGenerator } from '@/hooks/usePluginGenerator';
-import { WelcomeCard } from './WelcomeCard';
 import { DashboardLoadingState } from './DashboardLoadingState';
 import { CreatePluginModal } from './CreatePluginModal';
-import { TokenUsageStats } from './TokenUsageStats';
+import { useDashboardData } from '@/hooks/useDashboardData';
+
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet';
-import { ServerConsolePanel } from './ServerConsolePanel';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import Image from 'next/image';
 
 interface Plugin {
   _id: string;
@@ -78,15 +98,27 @@ interface PluginStats {
 export function DashboardOverview() {
   const router = useRouter();
   const { data: session } = useSession();
-  const { downloadJar, generatePlugin, isLoading } = usePluginGenerator();
+  const { downloadJar, generatePlugin } = usePluginGenerator();
   const [plugins, setPlugins] = useState<Plugin[]>([]);
   const [stats, setStats] = useState<PluginStats | null>(null);
+  const [tokenUsage, setTokenUsage] = useState<{
+    canUseTokens: boolean;
+    tokensUsed: number;
+    tokenLimit: number;
+    tokensRemaining: number;
+    usagePercentage: number;
+    totalTokensUsed?: number;
+    monthlyLimit?: number;
+  } | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(true);
+  const [tokenError, setTokenError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string>('');
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [analyticsOpen, setAnalyticsOpen] = useState(false);
-  const [consoleOpen, setConsoleOpen] = useState(false);
-  const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Dashboard data hook
+  const { } = useDashboardData();
 
   // Check if we're in development mode
   const isDevelopmentMode = process.env.DEVELOP === 'true';
@@ -104,7 +136,10 @@ export function DashboardOverview() {
   useEffect(() => {
     loadPlugins();
     loadStats();
-  }, []);  const loadPlugins = async () => {
+    loadTokenUsage();
+  }, []);
+
+  const loadPlugins = async () => {
     try {
       setIsLoadingData(true);
       const response = await fetch('/api/plugins');
@@ -135,383 +170,642 @@ export function DashboardOverview() {
       console.error('Error loading stats:', err);
     }
   };
+
+  const loadTokenUsage = async () => {
+    try {
+      setTokenLoading(true);
+      const response = await fetch('/api/user/tokens');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setTokenUsage(data);
+        setTokenError(null);
+        console.log('Loaded token usage:', data);
+      } else {
+        setTokenError(data.error || 'Failed to load token usage');
+      }
+    } catch (err) {
+      console.error('Error loading token usage:', err);
+      setTokenError('Failed to load token usage');
+    } finally {
+      setTokenLoading(false);
+    }
+  };
+
   const handleCreateNewPlugin = () => {
     setCreateModalOpen(true);
   };
+
   const handleCreatePlugin = (data: { prompt: string; userId: string; pluginName?: string }) => {
+    // Check if user has tokens before generating
+    if (tokenUsage && !tokenUsage.canUseTokens) {
+      alert('You have reached your token limit. Please upgrade your plan or wait for the limit to reset.');
+      return;
+    }
+    
     generatePlugin(data);
     // Don't close modal immediately - let the modal handle its own state based on generation events
-  };  const handleEditPlugin = (pluginName: string) => {
+  };
+
+  const handleEditPlugin = (pluginName: string) => {
     router.push(`/dashboard/editor?plugin=${pluginName}&userId=${encodeURIComponent(currentUserId)}`);
-  };const handleDownloadJar = async (e: React.MouseEvent, pluginName: string) => {
+  };
+
+  const handleDownloadJar = async (e: React.MouseEvent, pluginName: string) => {
     e.preventDefault();
     e.stopPropagation();
     await downloadJar(currentUserId, pluginName);
   };
-  // Example: get API token from session or user context
-  // TODO: Replace with real token logic or prompt user for token if not present
-  const apiToken = '';
 
-  // Show loading state
+  const filteredPlugins = plugins.filter(plugin => 
+    plugin.pluginName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    plugin.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (isLoadingData) {
     return <DashboardLoadingState />;
   }
 
   return (
-    <div className="min-h-screen bg-animated-grid bg-particles font-sans relative overflow-hidden">
-      {/* Enhanced ambient background elements */}
-      <div className="absolute inset-0 bg-grid-small opacity-[0.13] dark:opacity-[0.08] z-0"></div>
-      <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent rounded-full blur-3xl animate-pulse z-0"></div>
-      <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-gradient-to-br from-chart-1/12 via-chart-1/6 to-transparent rounded-full blur-3xl animate-pulse z-0" style={{animationDelay: '1s'}}></div>
-      <div className="absolute top-1/2 left-1/6 w-64 h-64 bg-gradient-to-br from-chart-3/12 to-transparent rounded-full blur-2xl animate-pulse z-0" style={{animationDelay: '2s'}}></div>
-      
-      <div className="container mx-auto px-4 md:px-8 py-12 space-y-20 animate-in fade-in-0 duration-700 relative z-10">
-        {/* Welcome Section with Blurred Minecraft BG */}
-        <div className="animate-in fade-in slide-in-from-top-6 duration-700 delay-100">
-          <div className="relative rounded-3xl bg-black/80 backdrop-blur-2xl border border-white/10 shadow-2xl p-2 md:p-4 overflow-hidden">
-            {/* Minecraft Hero Image Decorative Element - Card background, overflow hidden */}
-            <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden rounded-3xl">
-              <img
-                src="/minecraft-hero.jpg"
-                alt="Minecraft Hero"
-                className="w-full h-full object-cover blur-[6px] brightness-[.75] opacity-90 shadow-2xl animate-float-mc"
-                style={{ display: 'block' }}
-              />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      {/* Header */}
+      <div className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 dark:bg-slate-900/80 dark:supports-[backdrop-filter]:bg-slate-900/60">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            {/* Logo & Title */}
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <Image 
+                      src="/pegasus-logo.svg" 
+                      alt="Pegasus Logo" 
+                      width={24}
+                      height={24}
+                      className="w-6 h-6 text-white" 
+                    />
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center">
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                  </div>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Pegasus
+                  </h1>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Plugin Development Studio</p>
+                </div>
+              </div>
             </div>
-            <div className="relative z-10">
-              <WelcomeCard 
-                userName={currentUserEmail}
-                onCreatePlugin={handleCreateNewPlugin}
-                onQuickStart={handleCreateNewPlugin}
-              />
+
+            {/* Search & Actions */}
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <Input
+                  placeholder="Search plugins..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 w-80 bg-white/50 backdrop-blur-sm border-slate-200 dark:bg-slate-800/50 dark:border-slate-700"
+                />
+              </div>
+              
+              <Button size="sm" variant="outline" className="bg-white/50 backdrop-blur-sm">
+                <Bell className="w-4 h-4 mr-2" />
+                <Badge variant="destructive" className="ml-1 text-xs">3</Badge>
+              </Button>
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src="/avatars/01.png" alt="@username" />
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                        {currentUserEmail.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{currentUserEmail}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {currentUserId}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Users className="mr-2 h-4 w-4" />
+                    <span>Team</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
-        {/* Stats Cards */}
-        <div className="animate-in fade-in slide-in-from-top-8 duration-700 delay-200">
-          {stats && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-              {/* Stats Card Example */}
-              <Card className="dashboard-card accent-blue group relative overflow-hidden border-0 rounded-3xl bg-black/70 backdrop-blur-2xl shadow-2xl transition-all duration-500 hover:scale-[1.025] hover:shadow-blue-500/20">
-                <div className="absolute inset-0 bg-gradient-to-br from-accent-color/10 via-transparent to-accent-color/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-5 relative z-10">
-                  <CardTitle className="text-xs font-extrabold text-muted-foreground uppercase tracking-widest">Total Plugins</CardTitle>
-                  <div className="w-14 h-14 rounded-2xl glassmorphism flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-500">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-color to-accent-color/80 flex items-center justify-center">
-                      <Package className="h-5 w-5 text-white" />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="relative z-10">
-                  <div className="text-4xl font-black text-accent-color mb-3 drop-shadow-lg">{stats.totalPlugins}</div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground font-semibold">
-                    <div className="w-2 h-2 rounded-full bg-accent-color animate-pulse"></div>
-                    <TrendingUp className="h-3 w-3" />
-                    <span>All time projects</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="dashboard-card accent-emerald group relative overflow-hidden border-0 rounded-3xl bg-black/70 backdrop-blur-2xl shadow-2xl transition-all duration-500 hover:scale-[1.025] hover:shadow-emerald-500/20">
-                <div className="absolute inset-0 bg-gradient-to-br from-accent-color/10 via-transparent to-accent-color/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-5 relative z-10">
-                  <CardTitle className="text-xs font-extrabold text-muted-foreground uppercase tracking-widest">Recent Projects</CardTitle>
-                  <div className="w-14 h-14 rounded-2xl glassmorphism flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-500">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-color to-accent-color/80 flex items-center justify-center">
-                      <Calendar className="h-5 w-5 text-white" />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="relative z-10">
-                  <div className="text-4xl font-black text-accent-color mb-3 drop-shadow-lg">{stats.recentPlugins}</div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground font-semibold">
-                    <div className="w-2 h-2 rounded-full bg-accent-color animate-pulse"></div>
-                    <Rocket className="h-3 w-3" />
-                    <span>Last 30 days</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="dashboard-card accent-purple group relative overflow-hidden border-0 rounded-3xl bg-black/70 backdrop-blur-2xl shadow-2xl transition-all duration-500 hover:scale-[1.025] hover:shadow-purple-500/20">
-                <div className="absolute inset-0 bg-gradient-to-br from-accent-color/10 via-transparent to-accent-color/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-5 relative z-10">
-                  <CardTitle className="text-xs font-extrabold text-muted-foreground uppercase tracking-widest">MC Versions</CardTitle>
-                  <div className="w-14 h-14 rounded-2xl glassmorphism flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-500">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-color to-accent-color/80 flex items-center justify-center">
-                      <Code className="h-5 w-5 text-white" />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="relative z-10">
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap gap-2">
-                      {stats.favoriteMinecraftVersions.slice(0, 3).map((ver, index) => (
-                        <Badge 
-                          key={ver} 
-                          className={`text-xs font-bold px-3 py-1.5 rounded-lg border-0 shadow-sm transition-all duration-300 ${
-                            index === 0 
-                              ? 'bg-accent-color text-white' 
-                              : index === 1
-                              ? 'bg-accent-color/80 text-white'
-                              : 'bg-accent-color/60 text-white'
-                          }`}
-                        >
-                          {ver}
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground font-semibold">
-                      <div className="w-2 h-2 rounded-full bg-accent-color animate-pulse"></div>
-                      <Code className="h-3 w-3" />
-                      <span>Most popular</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="dashboard-card accent-amber group relative overflow-hidden border-0 rounded-3xl bg-black/70 backdrop-blur-2xl shadow-2xl transition-all duration-500 hover:scale-[1.025] hover:shadow-amber-500/20">
-                <div className="absolute inset-0 bg-gradient-to-br from-accent-color/10 via-transparent to-accent-color/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-5 relative z-10">
-                  <CardTitle className="text-xs font-extrabold text-muted-foreground uppercase tracking-widest">Activity</CardTitle>
-                  <div className="w-14 h-14 rounded-2xl glassmorphism flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-500">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-color to-accent-color/80 flex items-center justify-center">
-                      <TrendingUp className="h-5 w-5 text-white" />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="relative z-10">
-                  <div className="text-4xl font-black text-accent-color mb-3 drop-shadow-lg">{stats.recentPluginsList.length}</div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground font-semibold">
-                    <div className="w-2 h-2 rounded-full bg-accent-color animate-pulse"></div>
-                    <Calendar className="h-3 w-3" />
-                    <span>Recent actions</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </div>
-        {/* Quick Actions Section */}
-        <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 delay-300">
-          <div className="space-y-6 rounded-3xl bg-black/80 backdrop-blur-2xl border border-white/10 shadow-2xl p-2 md:p-4">
-            <div className="text-center space-y-4">
-              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-primary/20 via-primary/10 to-secondary/20 border border-primary/20 backdrop-blur-sm">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center">
-                  <Rocket className="h-4 w-4 text-white" />
-                </div>
-                <span className="text-sm font-bold text-primary uppercase tracking-wider">Actions Hub</span>
-              </div>
-              <h2 className="text-4xl font-black tracking-tight text-gradient-primary">
-                Quick Actions
+      </div>
+
+      {/* Main Content */}
+      <div className="container mx-auto px-4 py-8">
+        {/* Welcome Section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white">
+                Welcome back, {currentUserEmail.split('@')[0]}! 👋
               </h2>
-              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                Jump into your development workflow with our powerful tools and features
+              <p className="text-slate-600 dark:text-slate-400 mt-2">
+                Ready to build something amazing? Your workspace is waiting.
               </p>
             </div>
-            <div className="flex flex-wrap justify-center gap-4">
-              <Button
-                variant="outline"
-                className="group border-2 border-amber-400/30 hover:border-amber-400 hover:bg-amber-100/10 transition-all duration-300 font-semibold px-6 py-3 rounded-2xl backdrop-blur-lg flex items-center gap-2 bg-gradient-to-r from-amber-500/10 to-orange-500/10 hover:from-amber-500/20 hover:to-orange-500/20 shadow-lg hover:shadow-amber-500/20 animate-pulse-slow"
-                onClick={() => setAnalyticsOpen(true)}
-              >
-                <TrendingUp className="h-5 w-5 text-amber-500" />
-                <span className="bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent group-hover:from-amber-600 group-hover:to-orange-600">
-                  AI Usage Analytics
-                </span>
-                <ChevronRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform duration-300 text-amber-500" />
-              </Button>
-              <Button
-                variant="outline"
-                className="group border-2 border-blue-400/30 hover:border-blue-400 hover:bg-blue-100/10 transition-all duration-300 font-semibold px-6 py-3 rounded-2xl backdrop-blur-lg flex items-center gap-2 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 hover:from-blue-500/20 hover:to-cyan-500/20 shadow-lg hover:shadow-blue-500/20 animate-pulse-slow"
-                onClick={() => { setSelectedServerId('your-server-id-here'); setConsoleOpen(true); }}
-              >
-                <Code2 className="h-5 w-5 text-blue-500 icon-premium" />
-                <span className="bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent group-hover:from-blue-600 group-hover:to-cyan-600">
-                  Open Server Console
-                </span>
-                <ChevronRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform duration-300 text-blue-500" />
-              </Button>
-            </div>
+            <Button 
+              onClick={handleCreateNewPlugin}
+              disabled={tokenUsage ? !tokenUsage.canUseTokens : false}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              {tokenUsage && !tokenUsage.canUseTokens ? 'Token Limit Reached' : 'Create New Plugin'}
+            </Button>
           </div>
         </div>
-        {/* Recent Plugins */}
-        <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-400">
-          <div className="space-y-6">
-            <div className="flex items-center justify-between rounded-2xl bg-black/70 backdrop-blur-2xl border border-white/10 shadow-xl p-2 md:p-4">
-              <div className="space-y-4">
-                <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-blue-100/80 to-purple-100/80 dark:from-blue-900/30 dark:to-purple-900/30 border border-blue-200/50 dark:border-blue-800/50 backdrop-blur-sm">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
-                    <Package className="h-4 w-4 text-white" />
-                  </div>
-                  <span className="text-sm font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Recent Work</span>
+
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-white/70 backdrop-blur-sm border-slate-200 dark:bg-slate-800/70 dark:border-slate-700 hover:shadow-lg transition-all duration-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Plugins</p>
+                  <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats?.totalPlugins || 0}</p>
                 </div>
-                <h2 className="text-4xl font-black tracking-tight text-gradient-primary">
-                  Recent Projects
-                </h2>
-                <p className="text-muted-foreground text-lg max-w-2xl">
-                  Your latest plugin developments and recent activity across all projects
-                </p>
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                  <Package className="w-6 h-6 text-white" />
+                </div>
               </div>
-              <Button 
-                variant="outline" 
-                onClick={() => router.push('/dashboard/projects')}
-                className="group border-2 border-primary/30 hover:border-primary hover:bg-primary/5 transition-all duration-300 font-semibold px-6 py-3 rounded-2xl backdrop-blur-lg"
-              >
-                <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent group-hover:from-primary group-hover:to-primary">
-                  View All Projects
-                </span>
-                <ChevronRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform duration-300 text-primary" />
-              </Button>
-            </div>
-            {isLoadingData ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[...Array(6)].map((_, i) => (
-                  <Card key={i} className="animate-pulse rounded-2xl bg-black/60 backdrop-blur-lg">
-                    <CardHeader>
-                      <div className="h-6 bg-muted rounded w-3/4"></div>
-                      <div className="h-4 bg-muted rounded w-1/2"></div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <div className="h-4 bg-muted rounded"></div>
-                        <div className="h-8 bg-muted rounded"></div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="mt-4 flex items-center text-sm">
+                <ArrowUp className="w-4 h-4 text-green-500 mr-1" />
+                <span className="text-green-500 font-medium">+12%</span>
+                <span className="text-slate-600 dark:text-slate-400 ml-1">from last month</span>
               </div>
-            ) : plugins.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {plugins.slice(0, 6).map((plugin, index) => (
-                  <Card key={plugin._id} className={`dashboard-card group border-0 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-4 rounded-2xl bg-black/60 backdrop-blur-lg ${
-                    index % 4 === 0 ? 'accent-blue hover:shadow-blue-500/20' : 
-                    index % 4 === 1 ? 'accent-emerald hover:shadow-emerald-500/20' :
-                    index % 4 === 2 ? 'accent-purple hover:shadow-purple-500/20' : 'accent-amber hover:shadow-amber-500/20'
-                  }`}>
-                    <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${
-                      index % 4 === 0 ? 'gradient-overlay-blue' :
-                      index % 4 === 1 ? 'gradient-overlay-emerald' :
-                      index % 4 === 2 ? 'gradient-overlay-purple' : 'gradient-overlay-amber'
-                    }`}></div>
-                    <CardHeader className="pb-4 relative z-10">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-2 flex-1 min-w-0">
-                          <CardTitle className="truncate text-xl font-black text-accent-color group-hover:text-gradient-accent transition-all duration-300">
-                            {plugin.pluginName}
-                          </CardTitle>
-                          <CardDescription className="line-clamp-2 text-sm font-medium">
-                            {plugin.description || 'No description provided'}
-                          </CardDescription>
-                        </div>
-                        <Badge className="ml-3 shrink-0 bg-accent-color/20 border-accent-color/40 text-accent-color font-bold px-3 py-1">
-                          {plugin.minecraftVersion || 'N/A'}
-                        </Badge>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/70 backdrop-blur-sm border-slate-200 dark:bg-slate-800/70 dark:border-slate-700 hover:shadow-lg transition-all duration-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Active Projects</p>
+                  <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats?.recentPlugins || 0}</p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
+                  <Activity className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <div className="mt-4 flex items-center text-sm">
+                <ArrowUp className="w-4 h-4 text-green-500 mr-1" />
+                <span className="text-green-500 font-medium">+8%</span>
+                <span className="text-slate-600 dark:text-slate-400 ml-1">from last week</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/70 backdrop-blur-sm border-slate-200 dark:bg-slate-800/70 dark:border-slate-700 hover:shadow-lg transition-all duration-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Downloads</p>
+                  <p className="text-3xl font-bold text-slate-900 dark:text-white">1,234</p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
+                  <Download className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <div className="mt-4 flex items-center text-sm">
+                <ArrowUp className="w-4 h-4 text-green-500 mr-1" />
+                <span className="text-green-500 font-medium">+23%</span>
+                <span className="text-slate-600 dark:text-slate-400 ml-1">from last month</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/70 backdrop-blur-sm border-slate-200 dark:bg-slate-800/70 dark:border-slate-700 hover:shadow-lg transition-all duration-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Success Rate</p>
+                  <p className="text-3xl font-bold text-slate-900 dark:text-white">98.5%</p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <div className="mt-4 flex items-center text-sm">
+                <ArrowUp className="w-4 h-4 text-green-500 mr-1" />
+                <span className="text-green-500 font-medium">+2.1%</span>
+                <span className="text-slate-600 dark:text-slate-400 ml-1">from last week</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Recent Plugins */}
+          <div className="lg:col-span-2">
+            <Card className="bg-white/70 backdrop-blur-sm border-slate-200 dark:bg-slate-800/70 dark:border-slate-700">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl font-semibold text-slate-900 dark:text-white">
+                      Recent Plugins
+                    </CardTitle>
+                    <CardDescription>
+                      Your latest plugin projects and their status
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button size="sm" variant="outline">
+                      <Filter className="w-4 h-4 mr-2" />
+                      Filter
+                    </Button>
+                    <Button size="sm" variant="outline">
+                      <Layout className="w-4 h-4 mr-2" />
+                      View All
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {filteredPlugins.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Sparkles className="w-10 h-10 text-white" />
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-6 relative z-10">
-                      <div className="flex items-center gap-6 text-xs text-muted-foreground font-medium">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg bg-accent-color/15 border border-accent-color/30 flex items-center justify-center">
-                            <FileText className="h-4 w-4 text-accent-color" />
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                        No plugins yet
+                      </h3>
+                      <p className="text-slate-600 dark:text-slate-400 mb-4">
+                        Start building your first plugin with our AI assistant
+                      </p>
+                      <Button 
+                        onClick={handleCreateNewPlugin}
+                        disabled={tokenUsage ? !tokenUsage.canUseTokens : false}
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        {tokenUsage && !tokenUsage.canUseTokens ? 'Token Limit Reached' : 'Create Your First Plugin'}
+                      </Button>
+                    </div>
+                  ) : (
+                    filteredPlugins.map((plugin) => (
+                      <div
+                        key={plugin._id}
+                        className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200 cursor-pointer group"
+                        onClick={() => handleEditPlugin(plugin.pluginName)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                              <Code className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">
+                                {plugin.pluginName}
+                              </h3>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">
+                                {plugin.description || 'No description'}
+                              </p>
+                              <div className="flex items-center space-x-3 mt-2">
+                                <Badge variant="secondary" className="text-xs">
+                                  {plugin.minecraftVersion || 'Unknown'}
+                                </Badge>
+                                <span className="text-xs text-slate-500">
+                                  {new Date(plugin.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <span>{plugin.files?.length || 0} files</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg bg-accent-color/15 border border-accent-color/30 flex items-center justify-center">
-                            <Calendar className="h-4 w-4 text-accent-color" />
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => handleDownloadJar(e, plugin.pluginName)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <MoreVertical className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditPlugin(plugin.pluginName)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => handleDownloadJar(e, plugin.pluginName)}>
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Download
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-red-600">
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
-                          <span>{new Date(plugin.updatedAt).toLocaleDateString()}</span>
                         </div>
                       </div>
-                      <Separator className="bg-border/50" />
-                      <div className="flex gap-3 border-2 border-red-500 bg-black/30 p-2 rounded-xl"> {/* DEBUG: Add border and bg to see button row */}
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleEditPlugin(plugin.pluginName)}
-                          className="flex-1 matte-button hover:bg-accent-color hover:border-accent-color font-bold rounded-xl text-white border-2 border-accent-color/80 bg-gradient-to-br from-accent-color/80 to-accent-color/60 shadow-lg"
-                          style={{ opacity: 1, zIndex: 10 }}
-                        >
-                          <Edit className="h-4 w-4 mr-2 text-white" style={{ opacity: 1 }} />
-                          Edit
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={(e) => handleDownloadJar(e, plugin.pluginName)}
-                          className="px-4 border-accent-color/40 hover:border-accent-color hover:bg-accent-color/15 transition-all duration-300 rounded-xl"
-                        >
-                          <Download className="h-4 w-4 text-accent-color" />
-                        </Button>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Quick Actions */}
+            <Card className="bg-white/70 backdrop-blur-sm border-slate-200 dark:bg-slate-800/70 dark:border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Quick Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <Button 
+                    onClick={handleCreateNewPlugin} 
+                    disabled={tokenUsage ? !tokenUsage.canUseTokens : false}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    {tokenUsage && !tokenUsage.canUseTokens ? 'No Tokens' : 'New Plugin'}
+                  </Button>
+                  <Button variant="outline" className="w-full">
+                    <Code2 className="w-4 h-4 mr-2" />
+                    Open Editor
+                  </Button>
+                  <Button variant="outline" className="w-full">
+                    <Terminal className="w-4 h-4 mr-2" />
+                    Server Console
+                  </Button>
+                  <Button variant="outline" className="w-full">
+                    <FileText className="w-4 h-4 mr-2" />
+                    Documentation
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* System Status */}
+            <Card className="bg-white/70 backdrop-blur-sm border-slate-200 dark:bg-slate-800/70 dark:border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">
+                  System Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Cpu className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                      <span className="text-sm text-slate-700 dark:text-slate-300">CPU Usage</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-16 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-green-500 to-blue-500" style={{ width: '65%' }}></div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card className="border-2 border-dashed border-primary/20 bg-gradient-to-br from-primary/10 to-background shadow-xl hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 rounded-2xl backdrop-blur-lg">
-                <CardContent className="flex flex-col items-center justify-center p-16 text-center">
-                  <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 flex items-center justify-center mb-8 shadow-lg">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
-                      <Package className="h-12 w-12 text-primary/70" />
+                      <span className="text-sm font-medium text-slate-900 dark:text-white">65%</span>
                     </div>
                   </div>
-                  <h3 className="font-black text-2xl mb-4 text-foreground">No plugins yet</h3>
-                  <p className="text-muted-foreground mb-8 max-w-sm text-lg font-medium leading-relaxed">
-                    Get started by creating your first Minecraft plugin with our AI-powered generator.
-                  </p>
-                  <Button onClick={handleCreateNewPlugin} className="matte-button font-bold px-8 py-3 text-lg shadow-lg hover:shadow-xl hover:shadow-primary/25 transition-all duration-300 rounded-xl">
-                    <Plus className="h-5 w-5 mr-3" />
-                    Create Your First Plugin
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <HardDrive className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                      <span className="text-sm text-slate-700 dark:text-slate-300">Storage</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-16 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-yellow-500 to-orange-500" style={{ width: '82%' }}></div>
+                      </div>
+                      <span className="text-sm font-medium text-slate-900 dark:text-white">82%</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Database className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                      <span className="text-sm text-slate-700 dark:text-slate-300">Database</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-sm font-medium text-green-600">Online</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Wifi className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                      <span className="text-sm text-slate-700 dark:text-slate-300">Network</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-sm font-medium text-green-600">Stable</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Token Usage Card */}
+            <Card className="bg-white/70 backdrop-blur-sm border-slate-200 dark:bg-slate-800/70 dark:border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white flex items-center">
+                  <Zap className="w-5 h-5 mr-2" />
+                  Token Usage
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {tokenLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">Loading token usage...</p>
+                  </div>
+                ) : tokenError ? (
+                  <div className="text-center py-8">
+                    <div className="text-red-500 text-sm">{tokenError}</div>
+                  </div>
+                ) : tokenUsage ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600 dark:text-slate-400">Used</span>
+                      <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                        {tokenUsage.totalTokensUsed?.toLocaleString() || 0} / {tokenUsage.monthlyLimit?.toLocaleString() || 0}
+                      </span>
+                    </div>
+                    
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full transition-all duration-300 ${
+                          tokenUsage.canUseTokens ? 'bg-gradient-to-r from-green-500 to-blue-500' : 'bg-gradient-to-r from-orange-500 to-red-500'
+                        }`}
+                        style={{ width: `${Math.min(100, tokenUsage.usagePercentage || 0)}%` }}
+                      ></div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 dark:text-slate-400">
+                        {tokenUsage.tokensRemaining?.toLocaleString() || 0} remaining
+                      </span>
+                      <span className={`font-semibold ${tokenUsage.canUseTokens ? 'text-green-600' : 'text-red-600'}`}>
+                        {tokenUsage.canUseTokens ? 'Available' : 'Limit Reached'}
+                      </span>
+                    </div>
+                    
+                    {!tokenUsage.canUseTokens && (
+                      <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <div className="text-red-500">⚠️</div>
+                          <div className="text-sm text-red-700 dark:text-red-300">
+                            <strong>Token limit reached!</strong>
+                            <p className="mt-1">Plugin generation is disabled. Please upgrade your plan or wait for the limit to reset.</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-slate-600 dark:text-slate-400">No token usage data available</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
-        {/* Create Plugin Modal */}
-        <CreatePluginModal
-          open={createModalOpen}
-          onOpenChange={setCreateModalOpen}
-          onCreatePlugin={handleCreatePlugin}
-          isLoading={isLoading}
-          userId={currentUserId}
-        />
-        {/* Analytics Sheet */}
-        <Sheet open={analyticsOpen} onOpenChange={setAnalyticsOpen}>
-          <SheetContent side="right" className="max-w-lg w-full bg-background/95 backdrop-blur-2xl border-l border-white/10 shadow-2xl">
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-amber-500" />
-                AI Usage Analytics
-              </SheetTitle>
-              <SheetDescription>
-                Monitor your OpenRouter API token consumption and optimize your AI-powered development workflow.
-              </SheetDescription>
-            </SheetHeader>
-            <div className="py-4">
-              <TokenUsageStats userId={currentUserId} />
-            </div>
-          </SheetContent>
-        </Sheet>
-        {/* Server Console Sheet */}
-        <Sheet open={consoleOpen} onOpenChange={setConsoleOpen}>
-          <SheetContent side="right" className="max-w-2xl w-full bg-background/95 backdrop-blur-2xl border-l border-blue-500/20 shadow-2xl">
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2">
-                <Code2 className="h-5 w-5 text-blue-500 icon-premium" />
-                Server Console
-              </SheetTitle>
-              <SheetDescription>
-                Live Minecraft/game server console. View output and send commands in real time.
-              </SheetDescription>
-            </SheetHeader>
-            <div className="py-4">
-              {selectedServerId && apiToken ? (
-                <ServerConsolePanel serverId={selectedServerId} apiToken={apiToken} onClose={() => setConsoleOpen(false)} />
-              ) : (
-                <div className="text-muted-foreground">No server selected or missing API token.</div>
-              )}
-            </div>
-          </SheetContent>
-        </Sheet>
+
+        {/* Dashboard Sections */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8 mt-8">
+          {/* My Game Servers */}
+          <Card className="bg-white/70 backdrop-blur-sm border-slate-200 dark:bg-slate-800/70 dark:border-slate-700">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white flex items-center">
+                  <Server className="w-5 h-5 mr-2" />
+                  My Game Servers
+                </CardTitle>
+                <Button size="sm" variant="outline" disabled>
+                  🚧 Coming Soon
+                </Button>
+              </div>
+              <CardDescription>
+                Server management feature under construction
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12">
+                <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="text-4xl">🚧</div>
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                  Under Construction
+                </h3>
+                <p className="text-slate-600 dark:text-slate-400 mb-4">
+                  Game server management is coming soon! Monitor and control your Minecraft servers directly from the dashboard.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* My Support Tickets */}
+          <Card className="bg-white/70 backdrop-blur-sm border-slate-200 dark:bg-slate-800/70 dark:border-slate-700">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white flex items-center">
+                  <FileText className="w-5 h-5 mr-2" />
+                  My Support Tickets
+                </CardTitle>
+                <Button size="sm" variant="outline" disabled>
+                  🚧 Coming Soon
+                </Button>
+              </div>
+              <CardDescription>
+                Support ticket system under construction
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12">
+                <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="text-4xl">🚧</div>
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                  Under Construction
+                </h3>
+                <p className="text-slate-600 dark:text-slate-400 mb-4">
+                  Support ticket system is coming soon! Get help and track your support requests.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Weekly Leaderboard */}
+          <Card className="bg-white/70 backdrop-blur-sm border-slate-200 dark:bg-slate-800/70 dark:border-slate-700">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white flex items-center">
+                  <BarChart3 className="w-5 h-5 mr-2" />
+                  Weekly Leaderboard
+                </CardTitle>
+                <Button size="sm" variant="outline" disabled>
+                  🚧 Coming Soon
+                </Button>
+              </div>
+              <CardDescription>
+                Leaderboard system under construction
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12">
+                <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="text-4xl">🚧</div>
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                  Under Construction
+                </h3>
+                <p className="text-slate-600 dark:text-slate-400 mb-4">
+                  Leaderboard and competition features are coming soon! Compete with other creators and earn achievements.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
+
+      {/* Modals */}
+      <CreatePluginModal
+        open={createModalOpen}
+        onOpenChange={setCreateModalOpen}
+        onCreatePlugin={handleCreatePlugin}
+        userId={currentUserId}
+      />
     </div>
   );
 }

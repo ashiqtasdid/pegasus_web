@@ -16,7 +16,6 @@ import {
   PanelRightClose, 
   PanelRightOpen,
   LayoutTemplate,
-  Terminal,
   Search,
   Settings,
   Package,
@@ -31,16 +30,12 @@ import {
 import { usePluginSync } from '@/hooks/usePluginSync';
 import { usePluginGenerator } from '@/hooks/usePluginGenerator';
 import { UserMenu } from './UserMenu';
-import { ServerConsoleModal } from './ServerConsoleModal';
 import { ServerStatus } from './ServerStatus';
-import { ServerConsoleDebugger } from '@/lib/server-console-debug';
-import { ServerConsoleTroubleshooter } from './ServerConsoleTroubleshooter';
 
 interface VSCodeLayoutProps {
   className?: string;
   pluginId?: string | null;
   userId?: string | null;
-  userEmail?: string | null;
 }
 
 interface ChatMessage {
@@ -55,32 +50,12 @@ interface ChatMessage {
   };
 }
 
-export function VSCodeLayout({ className = '', pluginId, userId, userEmail }: VSCodeLayoutProps) {
+export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutProps) {
   const router = useRouter();
   const [selectedFile, setSelectedFile] = useState<FileNode | null>(null);
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
-  const [isServerConsoleOpen, setIsServerConsoleOpen] = useState(false);
-  const [buttonClickVisual, setButtonClickVisual] = useState(false);
-  const [showTroubleshooter, setShowTroubleshooter] = useState(false);
-  const consoleToggleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Debug console state changes
-  useEffect(() => {
-    console.log('Server console state changed:', isServerConsoleOpen);
-  }, [isServerConsoleOpen]);
-
-  // Debug state for development
-  const [debugState, setDebugState] = useState(ServerConsoleDebugger.getInstance().getState());
-  
-  // Subscribe to debug state changes
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      const unsubscribe = ServerConsoleDebugger.getInstance().subscribe(setDebugState);
-      return unsubscribe;
-    }
-  }, []);
-
   // Debug component to track state
   const DebugInfo = () => {
     if (process.env.NODE_ENV !== 'development') return null;
@@ -88,96 +63,17 @@ export function VSCodeLayout({ className = '', pluginId, userId, userEmail }: VS
     return (
       <div className="fixed top-4 right-4 bg-black text-white p-2 text-xs z-50 rounded shadow-lg">
         <div className="font-bold mb-1">Debug State</div>
-        <div className={`${isServerConsoleOpen ? 'text-green-400' : 'text-red-400'}`}>
-          Server Console: {isServerConsoleOpen ? 'OPEN' : 'CLOSED'}
-        </div>
         <div>Left Sidebar: {isLeftSidebarOpen ? 'OPEN' : 'CLOSED'}</div>
         <div>Right Sidebar: {isRightSidebarOpen ? 'OPEN' : 'CLOSED'}</div>
         <div>Plugin: {pluginId || 'None'}</div>
         <div>User: {userId || 'None'}</div>
         <div className="mt-1 pt-1 border-t border-gray-600 text-xs">
-          <div>Press Ctrl+` to toggle console</div>
-          <div>Click Terminal button to toggle</div>
-          <div className="text-yellow-300">Ctrl+Shift+T for troubleshooter</div>
-          <div className="text-cyan-300">Console opens as modal window</div>
-          {debugState.lastToggleSource && (
-            <div className="mt-1 text-yellow-300">
-              Last: {debugState.lastToggleSource} 
-              <br />Clicks: {debugState.clickCount}, KB: {debugState.keyboardShortcutCount}
-            </div>
-          )}
-          {buttonClickVisual && (
-            <div className="text-green-400 font-bold">🟢 CLICK DETECTED!</div>
-          )}
+          <div className="text-cyan-300">Layout Debug Info</div>
         </div>
       </div>
     );
   };
 
-  // Enhanced toggle function for server console with fallback mechanism
-  const toggleServerConsole = useCallback((source: string = 'unknown') => {
-    const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] Toggling server console from source: ${source}`);
-    
-    // Clear any pending timeout
-    if (consoleToggleTimeoutRef.current) {
-      clearTimeout(consoleToggleTimeoutRef.current);
-    }
-    
-    setIsServerConsoleOpen(prev => {
-      const newState = !prev;
-      console.log(`[${timestamp}] Server console state: ${prev} -> ${newState}`);
-      
-      // Record debug information
-      ServerConsoleDebugger.getInstance().recordToggle(source, newState);
-      
-      // Fallback: if state doesn't change within 100ms, try again
-      if (source.includes('click')) {
-        consoleToggleTimeoutRef.current = setTimeout(() => {
-          console.log(`[${timestamp}] Fallback: Checking if toggle worked...`);
-          setIsServerConsoleOpen(current => {
-            if (current === prev) {
-              console.log(`[${timestamp}] Fallback: State didn't change, forcing toggle`);
-              ServerConsoleDebugger.getInstance().recordToggle(`${source}-fallback`, !current);
-              return !current;
-            }
-            return current;
-          });
-        }, 100);
-      }
-      
-      return newState;
-    });
-  }, []);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (consoleToggleTimeoutRef.current) {
-        clearTimeout(consoleToggleTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Keyboard shortcut for server console (Ctrl+`)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === '`') {
-        e.preventDefault();
-        console.log('Keyboard shortcut triggered for server console');
-        toggleServerConsole('keyboard');
-      }
-      // Troubleshooter shortcut (Ctrl+Shift+T)
-      if (e.ctrlKey && e.shiftKey && e.key === 'T') {
-        e.preventDefault();
-        console.log('Opening server console troubleshooter');
-        setShowTroubleshooter(true);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleServerConsole]);
   const [leftSidebarView, setLeftSidebarView] = useState<'explorer' | 'plugins'>('explorer');
   const [mounted, setMounted] = useState(false);  const [pluginFiles, setPluginFiles] = useState<FileNode[]>([]);
   const [isAutoRefreshEnabled, setIsAutoRefreshEnabled] = useState(false);
@@ -185,13 +81,13 @@ export function VSCodeLayout({ className = '', pluginId, userId, userEmail }: VS
   const [autoRefreshInterval, setAutoRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [isLoadingPlugin, setIsLoadingPlugin] = useState(false);
   const [lastLoadedPluginId, setLastLoadedPluginId] = useState<string | null>(null);
-  const [serverCredentials, setServerCredentials] = useState<{
+  const [serverCredentials] = useState<{
     panelUrl: string;
     username: string;
     password: string;
     email?: string;
   } | null>(null);
-  const [serverDetails, setServerDetails] = useState<{
+  const [serverDetails] = useState<{
     id: number;
     identifier: string;
     name: string;
@@ -736,29 +632,6 @@ export function VSCodeLayout({ className = '', pluginId, userId, userEmail }: VS
     }
   };
 
-  // Handle server creation from ServerConsole
-  const handleServerCreated = (serverDetails: {
-    id: number;
-    identifier: string;
-    name: string;
-    status: string;
-  }, credentials: {
-    panelUrl: string;
-    username: string;
-    password: string;
-    email?: string;
-  }) => {
-    setServerDetails(serverDetails);
-    setServerCredentials(credentials);
-    showSuccess('Server Created', `Server "${serverDetails.name}" created successfully!`);
-    
-    // Log for debugging and mark variables as used
-    console.log('Current server state:', { 
-      serverDetails: serverDetails ? `Server ${serverDetails.name} (${serverDetails.status})` : 'None',
-      serverCredentials: serverCredentials ? `Panel: ${serverCredentials.panelUrl}` : 'None'
-    });
-  };
-
   // Log server state for debugging (marks variables as used)
   useEffect(() => {
     if (serverDetails || serverCredentials) {
@@ -851,45 +724,6 @@ export function VSCodeLayout({ className = '', pluginId, userId, userEmail }: VS
             >
               <Package className="w-4 h-4" />
             </Button>
-            <Button 
-              variant={isServerConsoleOpen ? 'default' : 'ghost'} 
-              size="sm" 
-              className={`h-8 w-8 p-0 relative z-20 transition-all duration-150 ${
-                isServerConsoleOpen ? 'bg-blue-600 text-white' : ''
-              } ${
-                buttonClickVisual ? 'ring-2 ring-green-400 bg-green-500 text-white' : ''
-              }`}
-              title={`Server Console (Ctrl+\`) - ${isServerConsoleOpen ? 'Close' : 'Open'}`}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                // Visual feedback
-                setButtonClickVisual(true);
-                setTimeout(() => setButtonClickVisual(false), 200);
-                
-                toggleServerConsole('button-click');
-              }}
-              onDoubleClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Server console button double-clicked - forcing toggle');
-                
-                // Visual feedback
-                setButtonClickVisual(true);
-                setTimeout(() => setButtonClickVisual(false), 300);
-                
-                toggleServerConsole('button-double-click');
-              }}
-              onMouseDown={() => {
-                console.log('Server console button mouse down at:', new Date().toISOString());
-              }}
-              onMouseUp={() => {
-                console.log('Server console button mouse up at:', new Date().toISOString());
-              }}
-            >
-              <Terminal className="w-4 h-4" />
-            </Button>
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Search">
               <Search className="w-4 h-4" />
             </Button>
@@ -968,9 +802,6 @@ export function VSCodeLayout({ className = '', pluginId, userId, userEmail }: VS
               )}
             </>
           )}
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Terminal">
-            <Terminal className="w-4 h-4" />
-          </Button>
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Settings">
             <Settings className="w-4 h-4" />
           </Button>
@@ -1075,19 +906,7 @@ export function VSCodeLayout({ className = '', pluginId, userId, userEmail }: VS
                   
                   {/* Quick Actions */}
                   <div className="mt-6 space-y-2">
-                    <Button 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        console.log('Open Server Console button clicked');
-                        setIsServerConsoleOpen(true);
-                      }}
-                      className="w-full flex items-center gap-2"
-                      variant="outline"
-                    >
-                      <Terminal className="h-4 w-4" />
-                      Open Server Console
-                    </Button>
+                    {/* Console button removed */}
                   </div>
                 </div>
               </div>
@@ -1161,31 +980,7 @@ export function VSCodeLayout({ className = '', pluginId, userId, userEmail }: VS
         onDismiss={dismissNotification}
       />
 
-      {/* Server Console Modal */}
-      {userId && (
-        <ServerConsoleModal
-          userId={userId}
-          currentPlugin={pluginId || undefined}
-          userEmail={userEmail || undefined}
-          isOpen={isServerConsoleOpen}
-          onClose={() => setIsServerConsoleOpen(false)}
-          onLog={(message: string, type: 'info' | 'success' | 'error' | 'warning') => {
-            console.log(`[${type.toUpperCase()}] ${message}`);
-          }}
-          onServerCreated={handleServerCreated}
-        />
-      )}
-
-      {/* Troubleshooter Overlay */}
-      {showTroubleshooter && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <ServerConsoleTroubleshooter
-            isConsoleOpen={isServerConsoleOpen}
-            onToggleConsole={() => toggleServerConsole('troubleshooter')}
-            onClose={() => setShowTroubleshooter(false)}
-          />
-        </div>
-      )}
+      {/* Console components removed */}
     </div>
   );
 }

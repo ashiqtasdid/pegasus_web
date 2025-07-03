@@ -79,21 +79,21 @@ export function TokenUsageStats({ userId }: TokenUsageStatsProps) {
         setIsLoading(true);
         setError(null);
         
-        const response = await fetch(`/api/user/token-usage?userId=${encodeURIComponent(userId)}`);
+        const response = await fetch(`/api/user/tokens?userId=${encodeURIComponent(userId)}`);
         const data = await response.json();
         
         if (response.ok) {
-          // Validate and sanitize the data
+          // Map the simple token data to the expected format
           const sanitizedData: TokenUsageData = {
             userId: data.userId || userId,
-            totalTokens: data.totalTokens || 0,
-            promptTokens: data.promptTokens || 0,
-            completionTokens: data.completionTokens || 0,
-            requestCount: data.requestCount || 0,
-            lastRequestAt: data.lastRequestAt || null,
-            dailyUsage: Array.isArray(data.dailyUsage) ? data.dailyUsage : [],
-            monthlyUsage: Array.isArray(data.monthlyUsage) ? data.monthlyUsage : [],
-            recentSessions: Array.isArray(data.recentSessions) ? data.recentSessions : []
+            totalTokens: data.tokensUsed || 0,
+            promptTokens: 0, // Not available in simple format
+            completionTokens: 0, // Not available in simple format
+            requestCount: 0, // Not available in simple format
+            lastRequestAt: null, // Not available in simple format
+            dailyUsage: [], // Not available in simple format
+            monthlyUsage: [], // Not available in simple format
+            recentSessions: [] // Not available in simple format
           };
           
           console.log('📊 Token usage data loaded:', sanitizedData);
