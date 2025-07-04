@@ -113,7 +113,7 @@ export const useToast = () => {
     animationRefs.current.set(id, timeoutId);
 
     return id;
-  }, []);
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const removeToast = useCallback((id: string) => {
     const toast = toastRefs.current.get(id);
@@ -290,7 +290,7 @@ export const useApiCall = <T>(
 
   useEffect(() => {
     execute();
-  }, [execute, ...dependencies]);
+  }, [execute, ...dependencies]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   return { ...state, refetch: execute };
 };

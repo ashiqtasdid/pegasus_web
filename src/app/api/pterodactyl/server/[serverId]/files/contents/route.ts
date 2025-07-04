@@ -3,10 +3,10 @@ import { getExternalApiUrl } from '@/lib/api-config';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { serverId: string } }
+  { params }: { params: Promise<{ serverId: string }> }
 ) {
   try {
-    const { serverId } = params;
+    const { serverId } = await params;
     const { searchParams } = new URL(request.url);
     const file = searchParams.get('file');
     const clientApiKey = searchParams.get('clientApiKey');

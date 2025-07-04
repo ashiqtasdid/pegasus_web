@@ -3,10 +3,10 @@ import { getExternalApiUrl } from '@/lib/api-config';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { serverId: string } }
+  { params }: { params: Promise<{ serverId: string }> }
 ) {
   try {
-    const { serverId } = params;
+    const { serverId } = await params;
     const body = await request.json();
     const { signal, clientApiKey } = body;
 
