@@ -357,30 +357,111 @@ export function usePluginGenerator() {
   
   const downloadJar = useCallback(async (userId: string, pluginName: string) => {
     try {
-      // Check if JAR is available
-      const response = await fetch(`/api/plugin/download-info/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`);
-      const downloadInfo = await response.json();
+      console.log('Starting download for:', { userId, pluginName });
       
-      if (!response.ok || !downloadInfo.available) {
-        alert('JAR file not available. Please ensure the plugin has been compiled successfully.');
-        return;
-      }
+      // Show loading toast
+      const toast = document.createElement('div');
+      toast.className = 'download-toast';
+      toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #1d4ed8;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        z-index: 9999;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      `;
+      toast.innerHTML = `
+        <div style="width: 16px; height: 16px; border: 2px solid #ffffff30; border-top: 2px solid #ffffff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+        Downloading ${pluginName}.jar...
+      `;
+      document.body.appendChild(toast);
       
-      // Start download
+      // Create download link and trigger download directly
+      // This avoids any fetch-related CORS or network errors
       const downloadUrl = `/api/plugin/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`;
+      const filename = `${pluginName}.jar`;
       
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.download = downloadInfo.jarFile || `${pluginName}.jar`;
+      link.download = filename;
       link.style.display = 'none';
       
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
+      // Show success toast after a brief delay to allow download to start
+      setTimeout(() => {
+        toast.innerHTML = `
+          <div style="color: #10b981;">✓</div>
+          Download started: ${filename}
+        `;
+        toast.style.background = '#059669';
+        
+        // Remove success toast after 3 seconds
+        setTimeout(() => {
+          if (toast.parentNode) {
+            toast.remove();
+          }
+        }, 3000);
+      }, 500);
+      
+      console.log('Download triggered successfully:', filename);
+      
     } catch (error) {
       console.error('Download error:', error);
-      alert(`Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Remove any existing loading toast
+      const existingToast = document.querySelector('.download-toast') as HTMLElement;
+      if (existingToast) {
+        existingToast.remove();
+      }
+      
+      // Show error toast
+      const errorToast = document.createElement('div');
+      errorToast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #dc2626;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        z-index: 9999;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        font-size: 14px;
+        max-width: 400px;
+        word-wrap: break-word;
+      `;
+      errorToast.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="color: #fca5a5;">✗</div>
+          <div>
+            <div style="font-weight: bold;">Download Failed</div>
+            <div style="font-size: 12px; margin-top: 4px; opacity: 0.9;">
+              ${error instanceof Error ? error.message : 'Unknown error occurred'}
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(errorToast);
+      
+      // Auto-remove error toast after 8 seconds
+      setTimeout(() => {
+        if (errorToast.parentNode) {
+          errorToast.remove();
+        }
+      }, 8000);
     }
   }, []);
 

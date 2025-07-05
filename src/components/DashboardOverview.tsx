@@ -203,8 +203,31 @@ export function DashboardOverview() {
       return;
     }
     
+    // Generate plugin and handle success/error
     generatePlugin(data);
-    // Don't close modal immediately - let the modal handle its own state based on generation events
+    
+    // Listen for plugin generation completion
+    const handlePluginGenerated = (event: CustomEvent) => {
+      const { success } = event.detail;
+      if (success) {
+        // Refresh data after successful generation
+        setTimeout(() => {
+          loadPlugins();
+          loadStats();
+          loadTokenUsage();
+        }, 1000);
+      }
+    };
+    
+    // Add event listener for this generation
+    if (typeof window !== 'undefined') {
+      window.addEventListener('plugin-generated', handlePluginGenerated as EventListener);
+      
+      // Clean up listener after 30 seconds (generation should complete by then)
+      setTimeout(() => {
+        window.removeEventListener('plugin-generated', handlePluginGenerated as EventListener);
+      }, 30000);
+    }
   };
 
   const handleEditPlugin = (pluginName: string) => {
@@ -214,7 +237,22 @@ export function DashboardOverview() {
   const handleDownloadJar = async (e: React.MouseEvent, pluginName: string) => {
     e.preventDefault();
     e.stopPropagation();
-    await downloadJar(currentUserId, pluginName);
+    
+    // Disable the button temporarily to prevent multiple clicks
+    const button = e.currentTarget as HTMLButtonElement;
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Downloading...';
+    
+    try {
+      await downloadJar(currentUserId, pluginName);
+    } finally {
+      // Re-enable button after download attempt
+      setTimeout(() => {
+        button.disabled = false;
+        button.textContent = originalText;
+      }, 2000);
+    }
   };
 
   const filteredPlugins = plugins.filter(plugin => 

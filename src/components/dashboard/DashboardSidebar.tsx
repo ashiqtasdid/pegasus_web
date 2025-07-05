@@ -201,7 +201,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   const isDevelopmentMode = process.env.DEVELOP === 'true';
 
   // Hooks
-  const { addToast } = useToast();
+  const { addToast, removeToast } = useToast();
   const { handleError } = useErrorHandler();
   const { permissions, loading: permissionsLoading } = useUserPermissions();
   const { loading: banCheckLoading } = useBanRedirect();
@@ -434,8 +434,10 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     }
 
     setIsGenerating(true);
+    let generatingToastId: string | null = null;
+    
     try {
-      addToast('Generating your plugin...', 'info');
+      generatingToastId = addToast('Generating your plugin...', 'info');
       
       const response = await fetch('/api/plugin/generate', {
         method: 'POST',
@@ -457,7 +459,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         throw new Error(errorData.error || 'Failed to generate plugin');
       }
 
+      // Remove the generating toast and show success
+      if (generatingToastId) {
+        removeToast(generatingToastId);
+      }
       addToast('Plugin generated successfully!', 'success');
+      
       await Promise.all([
         refetchPluginStats(), // Refresh stats
         refetchProjects(), // Refresh projects list
@@ -465,13 +472,18 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
       ]);
       setShowCreateModal(false);
     } catch (error) {
+      // Remove the generating toast and show error
+      if (generatingToastId) {
+        removeToast(generatingToastId);
+      }
+      
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate plugin';
       addToast(errorMessage, 'error');
       handleError(error instanceof Error ? error : new Error(errorMessage), 'Plugin Generation');
     } finally {
       setIsGenerating(false);
     }
-  }, [addToast, handleError, refetchPluginStats, refetchProjects, refetchTokenUsage, isAuthenticated, isDevelopmentMode, session, tokenUsageData]);
+  }, [addToast, removeToast, handleError, refetchPluginStats, refetchProjects, refetchTokenUsage, isAuthenticated, isDevelopmentMode, session, tokenUsageData]);
 
   // Handle search
   const handleSearch = useCallback((searchValue: string) => {

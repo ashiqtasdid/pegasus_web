@@ -16,7 +16,9 @@ export async function GET(
 
     if (!isDevelopmentMode && !session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }    const { userId, pluginName } = await params;
+    }
+
+    const { userId, pluginName } = await params;
     
     if (!userId || !pluginName) {
       return NextResponse.json(
@@ -39,8 +41,8 @@ export async function GET(
     if (!apiBase) {
       return NextResponse.json({
         available: false,
-        error: 'Backend API URL not configured'
-      });
+        error: 'Backend API not configured'
+      }, { status: 500 });
     }
 
     const backendUrl = `${apiBase}/plugin/download-info/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`;
