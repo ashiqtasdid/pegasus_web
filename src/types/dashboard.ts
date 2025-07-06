@@ -92,7 +92,7 @@ export interface ResponsiveBreakpoints {
   wide: number;
 }
 
-export type ViewType = 'dashboard' | 'projects' | 'settings' | 'admin';
+export type ViewType = 'dashboard' | 'projects' | 'settings' | 'admin' | 'tickets';
 
 export interface DashboardContextType {
   state: DashboardState;

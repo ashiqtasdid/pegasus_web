@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSession } from '@/lib/auth-client';
+import { Ticket } from '@/types/ticket';
 
 // Mock data interfaces
 interface GameServer {
@@ -33,6 +35,30 @@ export const useDashboardData = () => {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const { data: session } = useSession();
+
+  // Fetch real ticket data
+  const fetchTickets = useCallback(async () => {
+    if (!session?.user?.id) return;
+    
+    try {
+      const response = await fetch('/api/tickets?pageSize=100');
+      if (response.ok) {
+        const data = await response.json();
+        const formattedTickets = data.tickets.map((ticket: Ticket) => ({
+          id: ticket._id,
+          subject: ticket.title,
+          status: ticket.status,
+          priority: ticket.priority,
+          createdAt: new Date(ticket.createdAt),
+          lastUpdate: new Date(ticket.updatedAt)
+        }));
+        setTickets(formattedTickets);
+      }
+    } catch (error) {
+      console.error('Error fetching tickets:', error);
+    }
+  }, [session?.user?.id]);
 
   // Mock data - in a real app, these would be API calls
   const fetchMockData = useCallback(() => {
@@ -68,34 +94,6 @@ export const useDashboardData = () => {
         },
       ];
 
-      // Mock tickets data
-      const mockTickets: SupportTicket[] = [
-        {
-          id: 'T-001',
-          subject: 'Plugin deployment issue',
-          status: 'open',
-          priority: 'high',
-          createdAt: new Date('2025-07-03'),
-          lastUpdate: new Date('2025-07-04'),
-        },
-        {
-          id: 'T-002',
-          subject: 'Server lag investigation',
-          status: 'in-progress',
-          priority: 'medium',
-          createdAt: new Date('2025-07-02'),
-          lastUpdate: new Date('2025-07-03'),
-        },
-        {
-          id: 'T-003',
-          subject: 'Permission configuration help',
-          status: 'closed',
-          priority: 'low',
-          createdAt: new Date('2025-07-01'),
-          lastUpdate: new Date('2025-07-02'),
-        },
-      ];
-
       // Mock leaderboard data
       const mockLeaderboard: LeaderboardEntry[] = [
         { rank: 1, username: 'PluginMaster', score: 2850, pluginsCreated: 15 },
@@ -106,7 +104,6 @@ export const useDashboardData = () => {
       ];
 
       setServers(mockServers);
-      setTickets(mockTickets);
       setLeaderboard(mockLeaderboard);
       setLoading(false);
     }, 1000);
@@ -114,11 +111,13 @@ export const useDashboardData = () => {
 
   useEffect(() => {
     fetchMockData();
-  }, [fetchMockData]);
+    fetchTickets();
+  }, [fetchMockData, fetchTickets]);
 
   const refreshData = useCallback(() => {
     fetchMockData();
-  }, [fetchMockData]);
+    fetchTickets();
+  }, [fetchMockData, fetchTickets]);
 
   return {
     servers,

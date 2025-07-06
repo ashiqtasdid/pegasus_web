@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import crypto from 'crypto';
 
 export async function GET(
   request: NextRequest,
@@ -19,7 +20,9 @@ export async function GET(
     }
 
     const { userId, pluginName } = await params;
-    
+    const { searchParams } = new URL(request.url);
+    const includeToken = searchParams.get('includeToken') === 'true';
+
     if (!userId || !pluginName) {
       return NextResponse.json(
         { error: 'userId and pluginName are required' },
@@ -57,7 +60,58 @@ export async function GET(
 
       if (response.ok) {
         const data = await response.json();
-        return NextResponse.json(data);
+        
+        // Enhanced response with additional metadata
+        const enhancedResponse: {
+          available: boolean;
+          jarFile: string;
+          fileSize: number;
+          lastModified: string;
+          checksum: string | null;
+          downloadUrl: string;
+          secureDownloadUrl: string;
+          temporaryToken?: string;
+          metadata: {
+            version: string;
+            author: string;
+            description: string;
+            minecraftVersion: string;
+            dependencies: string[];
+          };
+        } = {
+          available: data.available || true,
+          jarFile: data.jarFile || `${pluginName}.jar`,
+          fileSize: data.fileSize || 0,
+          lastModified: data.lastModified || new Date().toISOString(),
+          checksum: data.checksum || null,
+          downloadUrl: `/api/plugin/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`,
+          secureDownloadUrl: `/api/plugin/download/secure/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`,
+          metadata: {
+            version: data.version || '1.0.0',
+            author: data.author || 'Unknown',
+            description: data.description || 'No description available',
+            minecraftVersion: data.minecraftVersion || '1.20.1',
+            dependencies: data.dependencies || []
+          }
+        };
+
+        // Generate temporary token if requested
+        if (includeToken) {
+          const tokenData = {
+            token: crypto.randomBytes(16).toString('hex'),
+            userId,
+            pluginName,
+            expiresAt: new Date(Date.now() + (5 * 60 * 1000)).toISOString(), // 5 minutes
+            maxDownloads: 1,
+            downloadCount: 0,
+            ipRestrictions: []
+          };
+
+          const encodedToken = Buffer.from(JSON.stringify(tokenData)).toString('base64');
+          enhancedResponse.temporaryToken = encodedToken;
+        }
+
+        return NextResponse.json(enhancedResponse);
       } else {
         return NextResponse.json({
           available: false,

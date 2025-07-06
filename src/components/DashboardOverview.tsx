@@ -38,6 +38,7 @@ import {
   Wifi,
   
 } from 'lucide-react';
+import { DownloadButton } from './DownloadButton';
 import { usePluginGenerator } from '@/hooks/usePluginGenerator';
 import { DashboardLoadingState } from './DashboardLoadingState';
 import { CreatePluginModal } from './CreatePluginModal';
@@ -98,7 +99,7 @@ interface PluginStats {
 export function DashboardOverview() {
   const router = useRouter();
   const { data: session } = useSession();
-  const { downloadJar, generatePlugin } = usePluginGenerator();
+  const { generatePlugin } = usePluginGenerator();
   const [plugins, setPlugins] = useState<Plugin[]>([]);
   const [stats, setStats] = useState<PluginStats | null>(null);
   const [tokenUsage, setTokenUsage] = useState<{
@@ -232,27 +233,6 @@ export function DashboardOverview() {
 
   const handleEditPlugin = (pluginName: string) => {
     router.push(`/dashboard/editor?plugin=${pluginName}&userId=${encodeURIComponent(currentUserId)}`);
-  };
-
-  const handleDownloadJar = async (e: React.MouseEvent, pluginName: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Disable the button temporarily to prevent multiple clicks
-    const button = e.currentTarget as HTMLButtonElement;
-    const originalText = button.textContent;
-    button.disabled = true;
-    button.textContent = 'Downloading...';
-    
-    try {
-      await downloadJar(currentUserId, pluginName);
-    } finally {
-      // Re-enable button after download attempt
-      setTimeout(() => {
-        button.disabled = false;
-        button.textContent = originalText;
-      }, 2000);
-    }
   };
 
   const filteredPlugins = plugins.filter(plugin => 
@@ -535,14 +515,19 @@ export function DashboardOverview() {
                             </div>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => handleDownloadJar(e, plugin.pluginName)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            <DownloadButton
+                              userId={currentUserId}
+                              pluginName={plugin.pluginName}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-sm"
+                              onDownloadComplete={() => {
+                                console.log('Download completed for', plugin.pluginName);
+                              }}
+                              onDownloadError={(error) => {
+                                console.error('Download error for', plugin.pluginName, error);
+                              }}
                             >
                               <Download className="w-4 h-4" />
-                            </Button>
+                            </DownloadButton>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button 
@@ -558,9 +543,21 @@ export function DashboardOverview() {
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => handleDownloadJar(e, plugin.pluginName)}>
-                                  <Download className="mr-2 h-4 w-4" />
-                                  Download
+                                <DropdownMenuItem>
+                                  <DownloadButton
+                                    userId={currentUserId}
+                                    pluginName={plugin.pluginName}
+                                    className="flex items-center w-full text-sm"
+                                    onDownloadComplete={() => {
+                                      console.log('Download completed for', plugin.pluginName);
+                                    }}
+                                    onDownloadError={(error) => {
+                                      console.error('Download error for', plugin.pluginName, error);
+                                    }}
+                                  >
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Download
+                                  </DownloadButton>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem className="text-red-600">

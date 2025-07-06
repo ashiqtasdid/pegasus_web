@@ -21,10 +21,12 @@ import { useBanRedirect } from '@/hooks/useBanCheck';
 import { useToast, useKeyboardNavigation, useResponsive, useErrorHandler, useApiCall } from '@/hooks/useDashboard';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { CreatePluginModal } from '@/components/CreatePluginModal';
+import { TicketDashboard } from '@/components/tickets/TicketDashboard';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { LoadingState } from '@/components/ui/LoadingComponents';
 import { SidebarNavItem, SidebarSection, SidebarBrand } from '@/components/ui/SidebarComponents';
-import { SearchBar, NotificationIcon, UserAvatar } from '@/components/ui/NavbarComponents';
+import { SearchBar, UserAvatar } from '@/components/ui/NavbarComponents';
 import { DashboardCard, EmptyState } from '@/components/ui/DashboardComponents';
 import { DataTable, ActionButton } from '@/components/ui/TableComponents';
 import { NavItem, PluginStats, ViewType, UserProfile } from '@/types/dashboard';
@@ -99,6 +101,14 @@ const mainNavItems: NavItem[] = [
       <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
         <rect x="3" y="7" width="18" height="13" rx="2"/>
         <path d="M16 3v4M8 3v4"/>
+      </svg>
+    ),
+  },
+  {
+    label: 'Tickets',
+    icon: (
+      <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+        <path d="M4 4v16h16V4H4zm2 2h12v12H6V6zm2 2h8v2H8V8zm0 3h8v2H8v-2zm0 3h6v2H8v-2z"/>
       </svg>
     ),
   },
@@ -350,6 +360,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           setCurrentView('projects');
           onViewChange?.('projects');
           addToast('Loading your projects...', 'info');
+          break;
+          
+        case 'Tickets':
+          setCurrentView('tickets');
+          onViewChange?.('tickets');
+          addToast('Loading tickets...', 'info');
           break;
           
         case 'Users':
@@ -709,10 +725,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               placeholder="Search projects..."
             />
             
-            <NotificationIcon
-              hasNotifications={false}
-              onClick={() => addToast('Notifications coming soon!', 'info')}
-            />
+            <NotificationBell className="mr-2" />
             
             <UserAvatar
               user={session?.user || user}
@@ -759,6 +772,10 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   session={session}
                   isDevelopmentMode={isDevelopmentMode}
                 />
+              )}
+              
+              {currentView === 'tickets' && (
+                <TicketDashboard />
               )}
               
               {currentView === 'settings' && (

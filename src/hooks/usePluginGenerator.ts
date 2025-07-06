@@ -385,37 +385,122 @@ export function usePluginGenerator() {
       `;
       document.body.appendChild(toast);
       
-      // Create download link and trigger download directly
-      // This avoids any fetch-related CORS or network errors
       const downloadUrl = `/api/plugin/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`;
       const filename = `${pluginName}.jar`;
       
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      link.style.display = 'none';
+      // First, check if the download endpoint is available
+      const checkResponse = await fetch(downloadUrl, {
+        method: 'HEAD',
+        headers: {
+          'Accept': 'application/java-archive, application/octet-stream, */*',
+          'Cache-Control': 'no-cache'
+        }
+      });
       
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      if (!checkResponse.ok) {
+        throw new Error(`Download not available: ${checkResponse.status} ${checkResponse.statusText}`);
+      }
       
-      // Show success toast after a brief delay to allow download to start
-      setTimeout(() => {
-        toast.innerHTML = `
-          <div style="color: #10b981;">✓</div>
-          Download started: ${filename}
-        `;
-        toast.style.background = '#059669';
-        
-        // Remove success toast after 3 seconds
-        setTimeout(() => {
-          if (toast.parentNode) {
-            toast.remove();
+      // Strategy 1: Try fetch download first (more reliable error handling)
+      console.log('Attempting fetch download...');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+      
+      try {
+        const response = await fetch(downloadUrl, {
+          method: 'GET',
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/java-archive, application/octet-stream, */*',
+            'Cache-Control': 'no-cache'
           }
-        }, 3000);
-      }, 500);
-      
-      console.log('Download triggered successfully:', filename);
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+        }
+
+        // Use blob approach to avoid streaming issues in production
+        const blob = await response.blob();
+        
+        if (blob.size === 0) {
+          throw new Error('Downloaded file is empty');
+        }
+        
+        // Create download using blob URL
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        // Show success toast
+        setTimeout(() => {
+          toast.innerHTML = `
+            <div style="color: #10b981;">✓</div>
+            Download complete: ${filename} (${(blob.size / 1024).toFixed(1)}KB)
+          `;
+          toast.style.background = '#059669';
+          
+          // Remove success toast after 3 seconds
+          setTimeout(() => {
+            if (toast.parentNode) {
+              toast.remove();
+            }
+          }, 3000);
+        }, 500);
+        
+        console.log('Fetch download completed successfully:', filename, 'Size:', blob.size, 'bytes');
+        
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        console.warn('Fetch download failed, trying direct link method:', fetchError);
+        
+        // Strategy 2: Fallback to direct link download
+        try {
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = filename;
+          link.style.display = 'none';
+          
+          // Add error handling for the link
+          link.addEventListener('error', (e) => {
+            console.error('Direct download link error:', e);
+            throw new Error('Direct download failed');
+          });
+          
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          // Show success toast after a brief delay to allow download to start
+          setTimeout(() => {
+            toast.innerHTML = `
+              <div style="color: #10b981;">✓</div>
+              Download started: ${filename}
+            `;
+            toast.style.background = '#059669';
+            
+            // Remove success toast after 3 seconds
+            setTimeout(() => {
+              if (toast.parentNode) {
+                toast.remove();
+              }
+            }, 3000);
+          }, 500);
+          
+          console.log('Direct download triggered successfully:', filename);
+          
+        } catch (directError) {
+          console.error('Direct download also failed:', directError);
+          throw new Error('Both download methods failed');
+        }
+      }
       
     } catch (error) {
       console.error('Download error:', error);
@@ -449,7 +534,12 @@ export function usePluginGenerator() {
           <div>
             <div style="font-weight: bold;">Download Failed</div>
             <div style="font-size: 12px; margin-top: 4px; opacity: 0.9;">
-              ${error instanceof Error ? error.message : 'Unknown error occurred'}
+              ${error instanceof Error ? 
+                (error.name === 'AbortError' ? 'Download timeout - please try again' :
+                 error.message.includes('NetworkError') ? 'Network error - check connection and retry' :
+                 error.message.includes('Failed to fetch') ? 'Server unreachable - try again later' :
+                 error.message) : 
+                'Unknown error occurred'}
             </div>
           </div>
         </div>

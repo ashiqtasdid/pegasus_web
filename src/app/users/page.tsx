@@ -1,6 +1,6 @@
 "use client";
 import React from 'react';
-import UserManagementDashboard from '@/components/UserManagementDashboard';
+import ComprehensiveAdminDashboard from '@/components/ComprehensiveAdminDashboard';
 import { useAdminOnly } from '@/hooks/useUserManagement';
 import { useBanRedirect } from '@/hooks/useBanCheck';
 
@@ -121,7 +121,7 @@ const UserManagementPage = () => {
 
   return (
     <div style={{ minHeight: '100vh', background: '#18181b' }}>
-      <UserManagementDashboard />
+      <ComprehensiveAdminDashboard />
     </div>
   );
 };
