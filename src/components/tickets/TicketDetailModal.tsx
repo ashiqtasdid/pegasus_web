@@ -74,7 +74,7 @@ export function TicketDetailModal({ ticket, onClose, onTicketUpdated }: TicketDe
     } finally {
       setMessagesLoading(false);
     }
-  }, [ticket._id, toast]);
+  }, [ticket._id, toast, messagesLoading]);
 
   // Initialize only once
   useEffect(() => {

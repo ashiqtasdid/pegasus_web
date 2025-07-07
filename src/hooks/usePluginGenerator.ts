@@ -310,18 +310,13 @@ export function usePluginGenerator() {
     } finally {
       setIsLoading(false);
     }
-  }, [loadProjectFiles, startAutoRefresh]);
+  }, [loadProjectFiles, startAutoRefresh, apiBase]);
   
   const downloadJar = useCallback(async (userId: string, pluginName: string) => {
     try {
       console.log('Starting JAR download for:', { userId, pluginName });
       
       setJarLoading(true);
-      const jarInfo = await getJarInfo(userId, pluginName);
-      
-      if (!jarInfo.available) {
-        throw new Error('JAR file is not available for download');
-      }
 
       const toast = document.createElement('div');
       toast.className = 'download-toast';
@@ -344,26 +339,14 @@ export function usePluginGenerator() {
       toast.innerHTML = `
         <div style="width: 16px; height: 16px; border: 2px solid #ffffff30; border-top: 2px solid #ffffff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
         <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
-        Downloading ${jarInfo.fileName || `${pluginName}.jar`}... (${jarInfo.fileSize ? Math.round(jarInfo.fileSize / 1024) : '?'}KB)
+        Downloading ${pluginName}.jar...
       `;
       document.body.appendChild(toast);
       
       const downloadUrl = `/api/plugin/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`;
-      const filename = jarInfo.fileName || `${pluginName}.jar`;
+      const filename = `${pluginName}.jar`;
       
-      const checkResponse = await fetch(downloadUrl, {
-        method: 'HEAD',
-        headers: {
-          'Accept': 'application/java-archive, application/octet-stream, */*',
-          'Cache-Control': 'no-cache'
-        }
-      });
-      
-      if (!checkResponse.ok) {
-        throw new Error(`Download not available: ${checkResponse.status} ${checkResponse.statusText}`);
-      }
-      
-      console.log('Attempting fetch download...');
+      console.log('Attempting direct download...');
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 120000);
       
@@ -386,7 +369,7 @@ export function usePluginGenerator() {
         const blob = await response.blob();
         
         if (blob.size === 0) {
-          throw new Error('Downloaded file is empty');
+          throw new Error('Downloaded file is empty - please try recompiling the plugin');
         }
         
         const url = URL.createObjectURL(blob);
@@ -412,11 +395,11 @@ export function usePluginGenerator() {
           }, 3000);
         }, 500);
         
-        console.log('Fetch download completed successfully:', filename, 'Size:', blob.size, 'bytes');
+        console.log('Direct download completed successfully:', filename, 'Size:', blob.size, 'bytes');
         
       } catch (fetchError) {
         clearTimeout(timeoutId);
-        console.warn('Fetch download failed, trying direct link method:', fetchError);
+        console.warn('Direct download failed, trying alternative method:', fetchError);
         
         try {
           const link = document.createElement('a');
@@ -442,11 +425,11 @@ export function usePluginGenerator() {
             }, 3000);
           }, 500);
           
-          console.log('Direct download triggered successfully:', filename);
+          console.log('Alternative download triggered successfully:', filename);
           
         } catch (directError) {
-          console.error('Direct download also failed:', directError);
-          throw new Error('Both download methods failed');
+          console.error('Both download methods failed:', directError);
+          throw new Error('JAR file not found - please compile the plugin first');
         }
       }
       
@@ -484,7 +467,7 @@ export function usePluginGenerator() {
                 (error.name === 'AbortError' ? 'Download timeout - please try again' :
                  error.message.includes('NetworkError') ? 'Network error - check connection and retry' :
                  error.message.includes('Failed to fetch') ? 'Server unreachable - try again later' :
-                 error.message.includes('not available') ? 'JAR file not compiled yet - try recompiling first' :
+                 error.message.includes('not available') ? 'JAR file not found - please compile the plugin first' :
                  error.message) : 
                 'Unknown error occurred'}
             </div>

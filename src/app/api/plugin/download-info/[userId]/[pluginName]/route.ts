@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import crypto from 'crypto';
+import { jarStorageService } from '@/lib/jar-storage-service';
 
 export async function GET(
   request: NextRequest,
@@ -38,99 +38,95 @@ export async function GET(
       }, { status: 403 });
     }
 
-    // Check backend API for download availability
-    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+    console.log('Checking JAR availability in database:', { userId, pluginName });
     
-    if (!apiBase) {
+    // Check JAR availability directly in MongoDB
+    const jarInfo = await jarStorageService.getJarInfo(userId, pluginName);
+    
+    if (!jarInfo.available) {
+      console.log('JAR file not found in database:', { userId, pluginName });
       return NextResponse.json({
         available: false,
-        error: 'Backend API not configured'
-      }, { status: 500 });
-    }
-
-    const backendUrl = `${apiBase}/plugin/download-info/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`;
-    
-    console.log('Checking JAR availability at backend:', backendUrl);
-    
-    try {
-      const response = await fetch(backendUrl, {
-        method: 'GET',
-        signal: AbortSignal.timeout(10000) // 10 second timeout
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Enhanced response with additional metadata
-        const enhancedResponse: {
-          available: boolean;
-          jarFile: string;
-          fileSize: number;
-          lastModified: string;
-          checksum: string | null;
-          downloadUrl: string;
-          secureDownloadUrl: string;
-          temporaryToken?: string;
-          metadata: {
-            version: string;
-            author: string;
-            description: string;
-            minecraftVersion: string;
-            dependencies: string[];
-          };
-        } = {
-          available: data.available || true,
-          jarFile: data.jarFile || `${pluginName}.jar`,
-          fileSize: data.fileSize || 0,
-          lastModified: data.lastModified || new Date().toISOString(),
-          checksum: data.checksum || null,
-          downloadUrl: `/api/plugin/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`,
-          secureDownloadUrl: `/api/plugin/download/secure/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`,
-          metadata: {
-            version: data.version || '1.0.0',
-            author: data.author || 'Unknown',
-            description: data.description || 'No description available',
-            minecraftVersion: data.minecraftVersion || '1.20.1',
-            dependencies: data.dependencies || []
-          }
-        };
-
-        // Generate temporary token if requested
-        if (includeToken) {
-          const tokenData = {
-            token: crypto.randomBytes(16).toString('hex'),
-            userId,
-            pluginName,
-            expiresAt: new Date(Date.now() + (5 * 60 * 1000)).toISOString(), // 5 minutes
-            maxDownloads: 1,
-            downloadCount: 0,
-            ipRestrictions: []
-          };
-
-          const encodedToken = Buffer.from(JSON.stringify(tokenData)).toString('base64');
-          enhancedResponse.temporaryToken = encodedToken;
+        error: 'JAR file not found. Please compile your plugin first.',
+        downloadUrl: `/api/plugin/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`,
+        secureDownloadUrl: `/api/plugin/download/secure/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`,
+        metadata: {
+          version: '1.0.0',
+          author: 'Unknown',
+          description: 'No description available',
+          minecraftVersion: '1.20.1',
+          dependencies: []
         }
-
-        return NextResponse.json(enhancedResponse);
-      } else {
-        return NextResponse.json({
-          available: false,
-          error: `Backend returned ${response.status}`
-        });
-      }
-    } catch (fetchError) {
-      console.error('Error checking JAR availability:', fetchError);
-      return NextResponse.json({
-        available: false,
-        error: 'Backend unavailable'
-      });
+      }, { status: 404 });
     }
+
+    console.log('JAR file found in database:', jarInfo);
+
+    // Enhanced response with additional metadata
+    const enhancedResponse: {
+      available: boolean;
+      jarFile: string;
+      fileSize: number;
+      lastModified: string;
+      checksum: string | null;
+      downloadUrl: string;
+      secureDownloadUrl: string;
+      temporaryToken?: string;
+      metadata: {
+        version: string;
+        author: string;
+        description: string;
+        minecraftVersion: string;
+        dependencies: string[];
+      };
+    } = {
+      available: true,
+      jarFile: jarInfo.fileName || `${pluginName}.jar`,
+      fileSize: jarInfo.fileSize || 0,
+      lastModified: jarInfo.lastModified || new Date().toISOString(),
+      checksum: jarInfo.checksum || null,
+      downloadUrl: `/api/plugin/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`,
+      secureDownloadUrl: `/api/plugin/download/secure/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`,
+      metadata: {
+        version: jarInfo.metadata?.version || '1.0.0',
+        author: jarInfo.metadata?.author || 'Unknown',
+        description: jarInfo.metadata?.description || 'No description available',
+        minecraftVersion: jarInfo.metadata?.minecraftVersion || '1.20.1',
+        dependencies: jarInfo.metadata?.dependencies || []
+      }
+    };
+
+    // Generate temporary token if requested
+    if (includeToken) {
+      const tokenData = {
+        userId,
+        pluginName,
+        expiresAt: new Date(Date.now() + 3600000).toISOString(), // 1 hour expiry
+        maxDownloads: 5
+      };
+      
+      const encodedToken = Buffer.from(JSON.stringify(tokenData)).toString('base64');
+      enhancedResponse.temporaryToken = encodedToken;
+    }
+
+    return NextResponse.json(enhancedResponse);
 
   } catch (error) {
     console.error('Error checking JAR availability:', error);
+    
+    const { userId, pluginName } = await params;
     return NextResponse.json({
       available: false,
-      error: 'Internal server error'
+      error: 'Failed to check JAR availability',
+      downloadUrl: `/api/plugin/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`,
+      secureDownloadUrl: `/api/plugin/download/secure/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`,
+      metadata: {
+        version: '1.0.0',
+        author: 'Unknown',
+        description: 'No description available',
+        minecraftVersion: '1.20.1',
+        dependencies: []
+      }
     }, { status: 500 });
   }
 }

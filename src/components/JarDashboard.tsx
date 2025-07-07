@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,13 +29,7 @@ export default function JarDashboard({ userId }: JarDashboardProps) {
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    if (userId) {
-      loadData();
-    }
-  }, [userId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -55,7 +49,13 @@ export default function JarDashboard({ userId }: JarDashboardProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId) {
+      loadData();
+    }
+  }, [userId, loadData]);
 
   const handleDownload = async (pluginName: string) => {
     try {

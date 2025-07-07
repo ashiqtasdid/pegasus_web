@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { jarStorageService } from '@/lib/jar-storage-service';
 
 export async function GET(
   request: NextRequest,
@@ -35,53 +36,21 @@ export async function GET(
       }, { status: 403 });
     }
 
-    // Check backend API for JAR existence
-    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+    console.log('Checking JAR existence in database:', { userId, pluginName });
     
-    if (!apiBase) {
-      return NextResponse.json({
-        exists: false,
-        error: 'Backend API not configured'
-      }, { status: 500 });
-    }
+    // Check JAR existence directly in MongoDB
+    const exists = await jarStorageService.jarExists(userId, pluginName);
+    
+    console.log('JAR existence check result:', { userId, pluginName, exists });
 
-    const backendUrl = `${apiBase}/plugin/jar-exists/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`;
-    
-    console.log('Checking JAR existence at backend:', backendUrl);
-    
-    try {
-      const response = await fetch(backendUrl, {
-        method: 'GET',
-        signal: AbortSignal.timeout(10000) // 10 second timeout
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return NextResponse.json({
-          exists: data.exists || false,
-          fileName: data.fileName || `${pluginName}.jar`,
-          fileSize: data.fileSize || 0,
-          lastModified: data.lastModified || new Date().toISOString()
-        });
-      } else {
-        return NextResponse.json({
-          exists: false,
-          error: `Backend returned ${response.status}`
-        });
-      }
-    } catch (fetchError) {
-      console.error('Error checking JAR existence:', fetchError);
-      return NextResponse.json({
-        exists: false,
-        error: 'Backend unavailable'
-      });
-    }
+    return NextResponse.json({ exists });
 
   } catch (error) {
     console.error('Error checking JAR existence:', error);
+    
     return NextResponse.json({
       exists: false,
-      error: 'Internal server error'
+      error: 'Failed to check JAR existence'
     }, { status: 500 });
   }
 }
