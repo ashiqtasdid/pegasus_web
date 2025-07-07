@@ -127,6 +127,8 @@ export function TicketDetailModal({ ticket, onClose, onTicketUpdated }: TicketDe
     
     try {
       setLoading(true);
+      console.log('Updating ticket status:', { ticketId: ticket._id, newStatus });
+      
       const response = await fetch(`/api/tickets/${ticket._id}`, {
         method: 'PATCH',
         headers: {
@@ -135,11 +137,17 @@ export function TicketDetailModal({ ticket, onClose, onTicketUpdated }: TicketDe
         body: JSON.stringify({ status: newStatus }),
       });
 
+      console.log('Update response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Failed to update ticket');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Update failed:', errorData);
+        throw new Error(errorData.error || 'Failed to update ticket');
       }
 
       const updatedTicket = await response.json();
+      console.log('Successfully updated ticket:', updatedTicket);
+      
       setCurrentTicket(updatedTicket);
       onTicketUpdated(updatedTicket);
       
@@ -151,7 +159,7 @@ export function TicketDetailModal({ ticket, onClose, onTicketUpdated }: TicketDe
       console.error('Error updating ticket:', error);
       toast({
         title: "Error",
-        description: "Failed to update ticket. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to update ticket. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -164,6 +172,8 @@ export function TicketDetailModal({ ticket, onClose, onTicketUpdated }: TicketDe
     
     try {
       setLoading(true);
+      console.log('Updating ticket priority:', { ticketId: ticket._id, newPriority });
+      
       const response = await fetch(`/api/tickets/${ticket._id}`, {
         method: 'PATCH',
         headers: {
@@ -172,11 +182,17 @@ export function TicketDetailModal({ ticket, onClose, onTicketUpdated }: TicketDe
         body: JSON.stringify({ priority: newPriority }),
       });
 
+      console.log('Priority update response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Failed to update ticket');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Priority update failed:', errorData);
+        throw new Error(errorData.error || 'Failed to update ticket priority');
       }
 
       const updatedTicket = await response.json();
+      console.log('Successfully updated ticket priority:', updatedTicket);
+      
       setCurrentTicket(updatedTicket);
       onTicketUpdated(updatedTicket);
       
@@ -185,10 +201,10 @@ export function TicketDetailModal({ ticket, onClose, onTicketUpdated }: TicketDe
         description: "Ticket priority updated successfully",
       });
     } catch (error) {
-      console.error('Error updating ticket:', error);
+      console.error('Error updating ticket priority:', error);
       toast({
         title: "Error",
-        description: "Failed to update ticket. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to update ticket priority. Please try again.",
         variant: "destructive",
       });
     } finally {

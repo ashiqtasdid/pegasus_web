@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { getJarInfo, type JarFileInfo } from '@/lib/jar-api';
 
 interface FormData {
   prompt: string;
@@ -84,8 +85,19 @@ export function usePluginGenerator() {
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [serverCredentials, setServerCredentials] = useState<ServerCredentials | null>(null);
   const [serverDetails, setServerDetails] = useState<ServerDetails | null>(null);
+  const [jarInfo, setJarInfo] = useState<JarFileInfo | null>(null);
+  const [jarLoading, setJarLoading] = useState(false);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
+
+  useEffect(() => {
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, []);
+
   const loadProjectFiles = useCallback(async (userId: string, pluginName: string, isAutoRefresh = false) => {
     if (!userId || !pluginName) return;
 
@@ -109,7 +121,6 @@ export function usePluginGenerator() {
       const data = await response.json();
       
       if (data.success && data.files) {
-        // Convert files object to project structure
         const files: ProjectFile[] = Object.entries(data.files).map(([path, content]) => ({
           path,
           content: content as string
@@ -130,10 +141,8 @@ export function usePluginGenerator() {
         
         if (!isAutoRefresh) {
           console.log('Loaded project files from MongoDB:', files.length, 'files');
-          console.log('Plugin metadata:', data.metadata);
         }
         
-        // Dispatch event for file refresh
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('plugin-files-refreshed', {
             detail: {
@@ -147,55 +156,37 @@ export function usePluginGenerator() {
           }));
         }
       } else {
-        if (!isAutoRefresh) {
-          console.log('No files found for plugin:', pluginName);
-        }
-        setProjectFiles({
-          projectExists: false
-        });
+        setProjectFiles({ projectExists: false });
       }
-
     } catch (error) {
       if (!isAutoRefresh) {
         console.error('Error loading project files:', error);
       }
-      setProjectFiles({
-        projectExists: false
-      });
+      setProjectFiles({ projectExists: false });
     }
   }, []);
 
-  // Setup auto-refresh functionality
   const startAutoRefresh = useCallback((userId: string, pluginName: string) => {
-    // Clear existing interval
     if (refreshIntervalRef.current) {
       clearInterval(refreshIntervalRef.current);
     }
 
-    // Set up new interval for 2 minutes (120000ms)
     refreshIntervalRef.current = setInterval(() => {
       loadProjectFiles(userId, pluginName, true);
-    }, 120000); // 2 minutes
-
-    console.log('Auto-refresh started for plugin:', pluginName, '(every 2 minutes)');
+    }, 5000);
   }, [loadProjectFiles]);
 
   const stopAutoRefresh = useCallback(() => {
     if (refreshIntervalRef.current) {
       clearInterval(refreshIntervalRef.current);
       refreshIntervalRef.current = null;
-      console.log('Auto-refresh stopped');
     }
   }, []);
 
-  // Cleanup interval on unmount
-  useEffect(() => {
-    return () => {
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-      }
-    };
-  }, []);
+  const extractPluginNameFromResult = (result: string): string => {
+    const match = result.match(/Project: ([^\n]+)/);
+    return match ? match[1].trim() : 'GeneratedPlugin';
+  };
 
   const generatePlugin = useCallback(async (data: FormData) => {
     const requestData = {
@@ -210,57 +201,32 @@ export function usePluginGenerator() {
     setProjectFiles(null);
 
     try {
-      // Follow the API documentation structure exactly
-      const response = await fetch('/api/plugin/generate', {
+      console.log('Sending generation request:', requestData);
+
+      const response = await fetch(`${apiBase}/plugin/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          prompt: data.prompt,
-          userId: data.userId,
-          email: data.email, // Include email as per documentation
-          name: data.pluginName,
-          autoCompile: true,
-          complexity: 5
-        })
+        body: JSON.stringify(requestData),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Generation failed: ${response.status} ${response.statusText}\n${errorText}`);
       }
 
       const responseData = await response.json();
-      
-      // Check for API documentation response structure
-      const result = responseData.result || responseData.message || 'Plugin generation completed';
-      const tokenUsage = responseData.tokenUsage;
-      const needsClientApiKey = responseData.needsClientApiKey;
-      const server = responseData.server;
+      const { result, tokenUsage, server, needsClientApiKey } = responseData;
+
       const pluginName = responseData.pluginName || data.pluginName;
-      
-      // Log token usage for analytics
+
       if (tokenUsage) {
-        console.log('🔢 Token Usage Analytics:', tokenUsage);
-        console.log(`📊 Tokens used this request: ${tokenUsage.tokensUsedThisRequest || tokenUsage.totalTokens}`);
-        console.log(`📈 Total requests: ${tokenUsage.requestCount}`);
-        
-        // Dispatch token usage event for other components to listen to
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('token-usage-updated', {
-            detail: {
-              userId: data.userId,
-              tokenUsage,
-              operation: 'plugin-generation'
-            }
-          }));
-        }
+        console.log('Token usage received:', tokenUsage);
       }
 
-      // Handle client API key requirement
       if (needsClientApiKey) {
         console.log('⚠️ Client API key required for full automation');
-        // Dispatch event to show client API key modal
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('client-api-key-required', {
             detail: {
@@ -280,12 +246,10 @@ export function usePluginGenerator() {
       };
       setResults(newResults);
 
-      // Extract server details and credentials if present (following API documentation structure)
       if (server) {
         console.log('🏗️ Server information received:', server);
         setServerDetails(server);
         
-        // Dispatch server creation event with details
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('server-created', {
             detail: {
@@ -297,13 +261,11 @@ export function usePluginGenerator() {
         }
       }
 
-      // Check if we have credentials in the response (may be embedded in the message)
       if (responseData.credentials) {
         console.log('🔐 Server credentials received');
         setServerCredentials(responseData.credentials);
       }
 
-      // Store current project info
       const extractedPluginName = pluginName || extractPluginNameFromResult(result);
       const newProject = {
         userId: data.userId,
@@ -311,13 +273,11 @@ export function usePluginGenerator() {
       };
       setCurrentProject(newProject);
 
-      // Load project files if generation was successful
       if (result.includes('COMPILATION SUCCESSFUL') || 
           result.includes('Plugin project generated') ||
           result.includes('successfully') ||
           responseData.success !== false) {
         
-        // Dispatch event to notify about plugin generation
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('plugin-generated', {
             detail: {
@@ -331,9 +291,7 @@ export function usePluginGenerator() {
         }
         
         console.log('✅ Plugin generated successfully:', newProject.pluginName);
-        console.log('📁 Loading project files...');
         
-        // Load files and start auto-refresh
         setTimeout(() => {
           loadProjectFiles(newProject.userId, newProject.pluginName);
           startAutoRefresh(newProject.userId, newProject.pluginName);
@@ -342,7 +300,6 @@ export function usePluginGenerator() {
 
     } catch (error) {
       console.error('Generation error:', error);
-      // Handle error state following API documentation error format
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setResults({
         result: `Error: ${errorMessage}`,
@@ -357,9 +314,15 @@ export function usePluginGenerator() {
   
   const downloadJar = useCallback(async (userId: string, pluginName: string) => {
     try {
-      console.log('Starting download for:', { userId, pluginName });
+      console.log('Starting JAR download for:', { userId, pluginName });
       
-      // Show loading toast
+      setJarLoading(true);
+      const jarInfo = await getJarInfo(userId, pluginName);
+      
+      if (!jarInfo.available) {
+        throw new Error('JAR file is not available for download');
+      }
+
       const toast = document.createElement('div');
       toast.className = 'download-toast';
       toast.style.cssText = `
@@ -381,14 +344,13 @@ export function usePluginGenerator() {
       toast.innerHTML = `
         <div style="width: 16px; height: 16px; border: 2px solid #ffffff30; border-top: 2px solid #ffffff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
         <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
-        Downloading ${pluginName}.jar...
+        Downloading ${jarInfo.fileName || `${pluginName}.jar`}... (${jarInfo.fileSize ? Math.round(jarInfo.fileSize / 1024) : '?'}KB)
       `;
       document.body.appendChild(toast);
       
       const downloadUrl = `/api/plugin/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`;
-      const filename = `${pluginName}.jar`;
+      const filename = jarInfo.fileName || `${pluginName}.jar`;
       
-      // First, check if the download endpoint is available
       const checkResponse = await fetch(downloadUrl, {
         method: 'HEAD',
         headers: {
@@ -401,10 +363,9 @@ export function usePluginGenerator() {
         throw new Error(`Download not available: ${checkResponse.status} ${checkResponse.statusText}`);
       }
       
-      // Strategy 1: Try fetch download first (more reliable error handling)
       console.log('Attempting fetch download...');
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
       
       try {
         const response = await fetch(downloadUrl, {
@@ -422,14 +383,12 @@ export function usePluginGenerator() {
           throw new Error(`Download failed: ${response.status} ${response.statusText}`);
         }
 
-        // Use blob approach to avoid streaming issues in production
         const blob = await response.blob();
         
         if (blob.size === 0) {
           throw new Error('Downloaded file is empty');
         }
         
-        // Create download using blob URL
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -439,7 +398,6 @@ export function usePluginGenerator() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        // Show success toast
         setTimeout(() => {
           toast.innerHTML = `
             <div style="color: #10b981;">✓</div>
@@ -447,7 +405,6 @@ export function usePluginGenerator() {
           `;
           toast.style.background = '#059669';
           
-          // Remove success toast after 3 seconds
           setTimeout(() => {
             if (toast.parentNode) {
               toast.remove();
@@ -461,24 +418,16 @@ export function usePluginGenerator() {
         clearTimeout(timeoutId);
         console.warn('Fetch download failed, trying direct link method:', fetchError);
         
-        // Strategy 2: Fallback to direct link download
         try {
           const link = document.createElement('a');
           link.href = downloadUrl;
           link.download = filename;
           link.style.display = 'none';
           
-          // Add error handling for the link
-          link.addEventListener('error', (e) => {
-            console.error('Direct download link error:', e);
-            throw new Error('Direct download failed');
-          });
-          
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
           
-          // Show success toast after a brief delay to allow download to start
           setTimeout(() => {
             toast.innerHTML = `
               <div style="color: #10b981;">✓</div>
@@ -486,7 +435,6 @@ export function usePluginGenerator() {
             `;
             toast.style.background = '#059669';
             
-            // Remove success toast after 3 seconds
             setTimeout(() => {
               if (toast.parentNode) {
                 toast.remove();
@@ -503,15 +451,13 @@ export function usePluginGenerator() {
       }
       
     } catch (error) {
-      console.error('Download error:', error);
+      console.error('JAR download error:', error);
       
-      // Remove any existing loading toast
       const existingToast = document.querySelector('.download-toast') as HTMLElement;
       if (existingToast) {
         existingToast.remove();
       }
       
-      // Show error toast
       const errorToast = document.createElement('div');
       errorToast.style.cssText = `
         position: fixed;
@@ -532,12 +478,13 @@ export function usePluginGenerator() {
         <div style="display: flex; align-items: center; gap: 8px;">
           <div style="color: #fca5a5;">✗</div>
           <div>
-            <div style="font-weight: bold;">Download Failed</div>
+            <div style="font-weight: bold;">JAR Download Failed</div>
             <div style="font-size: 12px; margin-top: 4px; opacity: 0.9;">
               ${error instanceof Error ? 
                 (error.name === 'AbortError' ? 'Download timeout - please try again' :
                  error.message.includes('NetworkError') ? 'Network error - check connection and retry' :
                  error.message.includes('Failed to fetch') ? 'Server unreachable - try again later' :
+                 error.message.includes('not available') ? 'JAR file not compiled yet - try recompiling first' :
                  error.message) : 
                 'Unknown error occurred'}
             </div>
@@ -546,14 +493,38 @@ export function usePluginGenerator() {
       `;
       document.body.appendChild(errorToast);
       
-      // Auto-remove error toast after 8 seconds
       setTimeout(() => {
         if (errorToast.parentNode) {
           errorToast.remove();
         }
       }, 8000);
+    } finally {
+      setJarLoading(false);
     }
   }, []);
+
+  const checkJarAvailability = useCallback(async (userId: string, pluginName: string) => {
+    if (!userId || !pluginName) return null;
+    
+    try {
+      setJarLoading(true);
+      const jarInfo = await getJarInfo(userId, pluginName);
+      setJarInfo(jarInfo);
+      return jarInfo;
+    } catch (error) {
+      console.error('Failed to check JAR availability:', error);
+      setJarInfo(null);
+      return null;
+    } finally {
+      setJarLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentProject) {
+      checkJarAvailability(currentProject.userId, currentProject.pluginName);
+    }
+  }, [currentProject, checkJarAvailability]);
 
   const downloadInstructions = useCallback(() => {
     const instructions = `
@@ -624,7 +595,7 @@ For support or modifications, refer to the generated source code.
       
       if (result.exists) {
         const lastModified = result.lastModified ? new Date(result.lastModified).toLocaleString() : 'Unknown';
-          if (result.hasCompiledJar) {
+        if (result.hasCompiledJar) {
           setProjectStatus(`
             <div class="flex items-center p-2 bg-green-50 border border-green-200 rounded">
               <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
@@ -652,7 +623,8 @@ For support or modifications, refer to the generated source code.
               </button>
             </div>
           `);
-        }      } else {
+        }
+      } else {
         setProjectStatus(`
           <div class="flex items-center p-2 bg-blue-50 border border-blue-200 rounded">
             <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
@@ -660,17 +632,18 @@ For support or modifications, refer to the generated source code.
           </div>
         `);
       }
-        } catch (error) {
+    } catch (error) {
       console.error('Error checking project existence:', error);
       setProjectStatus(`
         <div class="flex items-center p-2 bg-red-50 border border-red-200 rounded">
           <div class="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
           <span class="text-red-800 text-xs">Could not check project status</span>
-        </div>      `);
+        </div>
+      `);
     }
   }, [apiBase]);
+
   const sendChatMessage = useCallback(async (message: string) => {
-    // Add user message immediately
     const userMessage: Message = {
       type: 'user',
       content: message,
@@ -678,7 +651,8 @@ For support or modifications, refer to the generated source code.
     };
     setChatMessages(prev => [...prev, userMessage]);
 
-    try {      const response = await fetch('/api/chat/message', {
+    try {
+      const response = await fetch('/api/chat/message', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -688,10 +662,12 @@ For support or modifications, refer to the generated source code.
           username: currentProject?.userId || 'anonymous',
           pluginName: currentProject?.pluginName || null
         }),
-        signal: AbortSignal.timeout(130000) // 130 second timeout (slightly longer than backend)
+        signal: AbortSignal.timeout(130000)
       });
 
-      const data = await response.json();      if (data.success) {
+      const data = await response.json();
+
+      if (data.success) {
         const assistantMessage: Message = {
           type: 'assistant',
           content: data.message,
@@ -704,7 +680,6 @@ For support or modifications, refer to the generated source code.
         };
         setChatMessages(prev => [...prev, assistantMessage]);
         
-        // Dispatch event to trigger file refresh after AI chat completion
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('ai-chat-completed', {
             detail: {
@@ -752,10 +727,6 @@ For support or modifications, refer to the generated source code.
     setChatMessages(prev => [...prev, message]);
   }, []);
 
-  const extractPluginNameFromResult = (result: string): string => {
-    const match = result.match(/Project: ([^\n]+)/);
-    return match ? match[1].trim() : 'GeneratedPlugin';
-  };
   const recompilePlugin = useCallback(async (userId: string, pluginName: string, maxFixAttempts: number = 5) => {
     if (!userId || !pluginName) {
       throw new Error('userId and pluginName are required');
@@ -786,7 +757,6 @@ For support or modifications, refer to the generated source code.
       const result = await response.json();
       console.log('Recompilation result:', result);
 
-      // Add success message to chat
       if (result.success) {
         const message = `✅ **Plugin Recompiled Successfully!**\n\n` +
           `**Plugin:** ${pluginName}\n` +
@@ -798,6 +768,10 @@ For support or modifications, refer to the generated source code.
         addChatMessage('assistant', message, {
           type: 'recompile-success'
         });
+
+        if (currentProject) {
+          checkJarAvailability(currentProject.userId, currentProject.pluginName);
+        }
       } else {
         const errorMessage = `❌ **Recompilation Failed**\n\n` +
           `**Plugin:** ${pluginName}\n` +
@@ -823,7 +797,7 @@ For support or modifications, refer to the generated source code.
     } finally {
       setIsLoading(false);
     }
-  }, [apiBase, addChatMessage]);
+  }, [apiBase, addChatMessage, currentProject, checkJarAvailability]);
 
   return {
     isLoading,
@@ -835,6 +809,8 @@ For support or modifications, refer to the generated source code.
     lastRefresh,
     serverCredentials,
     serverDetails,
+    jarInfo,
+    jarLoading,
     generatePlugin,
     downloadJar,
     downloadInstructions,
@@ -845,6 +821,7 @@ For support or modifications, refer to the generated source code.
     addChatMessage,
     startAutoRefresh,
     stopAutoRefresh,
-    recompilePlugin
+    recompilePlugin,
+    checkJarAvailability
   };
 }

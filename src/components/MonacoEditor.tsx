@@ -4,6 +4,7 @@ import { Editor } from '@monaco-editor/react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Save, Download, Copy, FileText, Package } from 'lucide-react';
+import { usePluginGenerator } from '../hooks/usePluginGenerator';
 
 interface MonacoEditorProps {
   file?: {
@@ -21,6 +22,7 @@ export function MonacoEditor({ file, onSave, readOnly = false, userId, pluginNam
   const [content, setContent] = useState(file?.content || '// Welcome to Pegasus Code Editor\n// Select a file from the explorer to start coding\n');
   const [isDirty, setIsDirty] = useState(false);
   const [fontSize, setFontSize] = useState(14);
+  const { downloadJar, jarLoading } = usePluginGenerator();
 
   useEffect(() => {
     if (file) {
@@ -83,37 +85,10 @@ export function MonacoEditor({ file, onSave, readOnly = false, userId, pluginNam
     }
 
     try {
-      const response = await fetch(`/api/plugin/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
-      // Get the filename from Content-Disposition header or use default
-      const contentDisposition = response.headers.get('content-disposition');
-      let filename = `${pluginName}.jar`;
-      
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (filenameMatch) {
-          filename = filenameMatch[1];
-        }
-      }
-
-      // Create blob and download
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      await downloadJar(userId, pluginName);
     } catch (error) {
       console.error('Failed to download JAR:', error);
-      alert(`Failed to download JAR: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // The downloadJar function already shows toast notifications, so we don't need to show another alert
     }
   };
 
@@ -180,11 +155,12 @@ export function MonacoEditor({ file, onSave, readOnly = false, userId, pluginNam
               variant="ghost" 
               size="sm" 
               onClick={handleDownloadJar}
+              disabled={jarLoading}
               className="h-7 px-2"
               title={`Download ${pluginName}.jar`}
             >
               <Package className="w-3 h-3 mr-1" />
-              JAR
+              {jarLoading ? 'Downloading...' : 'JAR'}
             </Button>
           )}
         </div>

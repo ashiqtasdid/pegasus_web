@@ -36,6 +36,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  return handleTicketUpdate(request, { params });
+}
+
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  return handleTicketUpdate(request, { params });
+}
+
+async function handleTicketUpdate(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const session = await auth.api.getSession({
@@ -47,6 +55,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const body = await request.json();
+    console.log('Updating ticket:', id, 'with data:', body);
+    
     const ticketService = await connectTicketService();
     
     // Get existing ticket to check permissions
@@ -72,28 +82,45 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return acc;
     }, {} as Record<string, unknown>);
 
+    console.log('Filtered update data:', updateData);
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
+    }
+
     const updatedTicket = await ticketService.updateTicket(id, updateData);
 
     if (!updatedTicket) {
-      return NextResponse.json({ error: 'Failed to update ticket' }, { status: 500 });
+      console.error('Failed to update ticket in service');
+      return NextResponse.json({ error: 'Failed to update ticket. Please check the data and try again.' }, { status: 500 });
     }
+
+    console.log('Successfully updated ticket:', updatedTicket._id);
 
     // Create notification for status changes
     if (body.status && body.status !== existingTicket.status) {
-      await ticketService.createNotification({
-        ticketId: updatedTicket._id,
-        userId: existingTicket.userId,
-        type: 'status-change',
-        title: 'Ticket Status Updated',
-        message: `Ticket #${updatedTicket.ticketNumber} status changed to ${body.status}`,
-        read: false
-      });
+      try {
+        await ticketService.createNotification({
+          ticketId: updatedTicket._id,
+          userId: existingTicket.userId,
+          type: 'status-change',
+          title: 'Ticket Status Updated',
+          message: `Ticket #${updatedTicket.ticketNumber} status changed to ${body.status}`,
+          read: false
+        });
+      } catch (notificationError) {
+        console.warn('Failed to create notification:', notificationError);
+        // Don't fail the whole request for notification errors
+      }
     }
 
     return NextResponse.json(updatedTicket);
   } catch (error) {
     console.error('Error updating ticket:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Internal server error',
+      details: 'Failed to update ticket. Please try again.'
+    }, { status: 500 });
   }
 }
 

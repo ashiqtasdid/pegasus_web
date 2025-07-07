@@ -29,7 +29,9 @@ export async function GET(request: NextRequest) {
       category,
       search,
       assignedTo,
-      userId
+      // Only admins can see all tickets or specify userId filter
+      // Non-admins can only see their own tickets
+      userId: session.user.isAdmin ? userId : session.user.id
     };
 
     const ticketService = await connectTicketService();

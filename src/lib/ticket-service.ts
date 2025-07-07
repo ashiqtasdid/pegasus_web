@@ -106,28 +106,45 @@ export class TicketService {
     const collection = this.db.collection('tickets');
     const now = new Date().toISOString();
     
-    const updateData: Record<string, unknown> = {
-      ...request,
-      updatedAt: now
-    };
+    try {
+      const updateData: Record<string, unknown> = {
+        ...request,
+        updatedAt: now
+      };
 
-    // Handle status changes
-    if (request.status) {
-      if (request.status === 'resolved') {
-        updateData.resolvedAt = now;
-      } else if (request.status === 'closed') {
-        updateData.closedAt = now;
+      // Handle status changes
+      if (request.status) {
+        if (request.status === 'resolved') {
+          updateData.resolvedAt = now;
+        } else if (request.status === 'closed') {
+          updateData.closedAt = now;
+        }
       }
+
+      // Ensure tags is always an array
+      if (updateData.tags && !Array.isArray(updateData.tags)) {
+        updateData.tags = [];
+      }
+
+      console.log('Updating ticket with ObjectId:', ticketId, 'Update data:', updateData);
+
+      const result = await collection.findOneAndUpdate(
+        { _id: new ObjectId(ticketId) },
+        { $set: updateData },
+        { returnDocument: 'after' }
+      );
+
+      if (!result) {
+        console.error('No ticket found with ID:', ticketId);
+        return null;
+      }
+
+      console.log('Successfully updated ticket in database');
+      return { ...result, _id: result._id.toString() } as Ticket;
+    } catch (error) {
+      console.error('Error in updateTicket:', error);
+      throw error;
     }
-
-    const result = await collection.findOneAndUpdate(
-      { _id: new ObjectId(ticketId) },
-      { $set: updateData },
-      { returnDocument: 'after' }
-    );
-
-    if (!result) return null;
-    return { ...result, _id: result._id.toString() } as Ticket;
   }
 
   async deleteTicket(ticketId: string): Promise<boolean> {

@@ -34,19 +34,64 @@ interface SystemStats {
   systemUptime: string;
   memoryUsage: number;
   cpuUsage: number;
+  diskUsage?: number;
+  lastUpdated?: string;
 }
 
 // Admin Overview Component
-const AdminOverview: React.FC<{ userStats: UserManagementStats | null, ticketStats: TicketStats | null, systemStats: SystemStats | null }> = ({ userStats, ticketStats, systemStats }) => {
+const AdminOverview: React.FC<{ 
+  userStats: UserManagementStats | null, 
+  ticketStats: TicketStats | null, 
+  systemStats: SystemStats | null,
+  fetchStats: () => void,
+  error: string | null
+}> = ({ userStats, ticketStats, systemStats, fetchStats, error }) => {
   return (
     <div style={{ padding: '2rem', color: '#fff' }}>
       <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-          Admin Dashboard
-        </h1>
-        <p style={{ color: '#b3b3b3' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: 'bold', margin: 0 }}>
+            Admin Dashboard
+          </h1>
+          <button
+            onClick={fetchStats}
+            style={{
+              background: '#1d4ed8',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '0.5rem 1rem',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              transition: 'background 0.2s'
+            }}
+            onMouseOver={(e) => (e.target as HTMLElement).style.background = '#1e40af'}
+            onMouseOut={(e) => (e.target as HTMLElement).style.background = '#1d4ed8'}
+          >
+            Refresh Data
+          </button>
+        </div>
+        <p style={{ color: '#b3b3b3', margin: 0 }}>
           Welcome to the admin control panel
+          {systemStats?.lastUpdated && (
+            <span style={{ marginLeft: '1rem', fontSize: '0.75rem' }}>
+              Last updated: {new Date(systemStats.lastUpdated).toLocaleTimeString()}
+            </span>
+          )}
         </p>
+        {error && (
+          <div style={{
+            background: '#dc2626',
+            color: '#fff',
+            padding: '0.75rem',
+            borderRadius: '8px',
+            marginTop: '1rem',
+            fontSize: '0.875rem'
+          }}>
+            {error}
+          </div>
+        )}
       </div>
 
       {/* Quick Stats Grid */}
@@ -198,6 +243,43 @@ const AdminOverview: React.FC<{ userStats: UserManagementStats | null, ticketSta
             CPU usage, {systemStats?.memoryUsage || 45}% memory
           </div>
         </div>
+
+        {/* Plugins Stats */}
+        <div style={{ 
+          background: '#232326', 
+          padding: '1.5rem', 
+          borderRadius: '12px',
+          border: '1px solid #333'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+            <div style={{ 
+              width: '40px', 
+              height: '40px', 
+              background: '#f59e0b', 
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: '1rem'
+            }}>
+              <svg width="20" height="20" fill="white" viewBox="0 0 24 24">
+                <path d="M20 7L12 3L4 7l8 4l8-4z"/>
+                <path d="M4 12l8 4l8-4"/>
+                <path d="M4 17l8 4l8-4"/>
+              </svg>
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 'bold' }}>Plugins</h3>
+              <p style={{ margin: 0, color: '#b3b3b3', fontSize: '0.875rem' }}>Generated projects</p>
+            </div>
+          </div>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+            {systemStats?.totalPlugins || 0}
+          </div>
+          <div style={{ fontSize: '0.875rem', color: '#b3b3b3' }}>
+            {systemStats?.activeServers || 0} active servers
+          </div>
+        </div>
       </div>
 
       {/* Recent Activity */}
@@ -294,18 +376,26 @@ const ComprehensiveAdminDashboard = () => {
         setTicketStats(ticketData);
       }
 
-      // Mock system stats for now
-      setSystemStats({
-        totalUsers: userStats?.totalUsers || 0,
-        totalTickets: ticketStats?.total || 0,
-        activeServers: 3,
-        totalPlugins: 125,
-        systemUptime: "99.9%",
-        memoryUsage: 45,
-        cpuUsage: 15
-      });
+      // Fetch real system stats
+      const systemResponse = await fetch("/api/admin/system-stats");
+      if (systemResponse.ok) {
+        const systemData = await systemResponse.json();
+        setSystemStats(systemData);
+      } else {
+        // Fallback to basic stats if system stats fail
+        setSystemStats({
+          totalUsers: userStats?.totalUsers || 0,
+          totalTickets: ticketStats?.total || 0,
+          activeServers: 0,
+          totalPlugins: 0,
+          systemUptime: "99.9%",
+          memoryUsage: 45,
+          cpuUsage: 15
+        });
+      }
     } catch (err) {
       console.error("Failed to fetch stats:", err);
+      setError("Failed to load dashboard data");
     }
   }, [userStats?.totalUsers, ticketStats?.total]);
 
@@ -462,7 +552,9 @@ const ComprehensiveAdminDashboard = () => {
           <AdminOverview 
             userStats={userStats} 
             ticketStats={ticketStats} 
-            systemStats={systemStats} 
+            systemStats={systemStats}
+            fetchStats={fetchStats}
+            error={error}
           />
         )}
         
