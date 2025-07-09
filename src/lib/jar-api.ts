@@ -1,5 +1,9 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
-console.log(API_BASE_URL)
+// Unified External Download API
+// Uses the external VPS filesystem-based download endpoint
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+console.log('External API Base URL:', API_BASE_URL);
+
 export interface JarFileInfo {
   available: boolean;
   fileName?: string;
@@ -7,7 +11,6 @@ export interface JarFileInfo {
   lastModified?: string;
   checksum?: string;
   downloadUrl?: string;
-  secureDownloadUrl?: string;
   metadata?: {
     version?: string;
     author?: string;
@@ -15,13 +18,6 @@ export interface JarFileInfo {
     minecraftVersion?: string;
     dependencies?: string[];
   };
-}
-
-export interface DownloadToken {
-  token: string;
-  expiresAt: string;
-  downloadUrl: string;
-  maxDownloads: number;
 }
 
 export interface Plugin {
@@ -38,65 +34,52 @@ export interface Plugin {
   totalSize: number;
 }
 
-// JAR Information
+// Unified External API Download Functions
+
+/**
+ * Check JAR availability using external API
+ */
 export async function getJarInfo(userId: string, pluginName: string): Promise<JarFileInfo> {
-  const response = await fetch(`/api/plugin/download-info/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`);
-  if (!response.ok) throw new Error('Failed to get JAR info');
+  const url = `${API_BASE_URL}/download?userId=${encodeURIComponent(userId)}&pluginName=${encodeURIComponent(pluginName)}&info=true`;
+  
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to get JAR info: HTTP ${response.status}`);
+  }
+  
   return response.json();
 }
 
+/**
+ * Check if JAR exists using external API
+ */
 export async function checkJarExists(userId: string, pluginName: string): Promise<boolean> {
-  const response = await fetch(`/api/plugin/jar-exists/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`);
-  if (!response.ok) throw new Error('Failed to check JAR existence');
-  const data = await response.json();
-  return data.exists;
+  try {
+    const info = await getJarInfo(userId, pluginName);
+    return info.available;
+  } catch (error) {
+    console.warn(`Failed to check JAR existence for ${pluginName}:`, error);
+    return false;
+  }
 }
 
-// JAR Downloads
+/**
+ * Download JAR using external API
+ */
 export async function downloadJar(userId: string, pluginName: string): Promise<Blob> {
-  const response = await fetch(`/api/plugin/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`);
-  if (!response.ok) throw new Error('Failed to download JAR');
+  const url = `${API_BASE_URL}/download?userId=${encodeURIComponent(userId)}&pluginName=${encodeURIComponent(pluginName)}`;
+  
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to download JAR: HTTP ${response.status}`);
+  }
+  
   return response.blob();
 }
 
-export async function downloadJarSecure(userId: string, pluginName: string, token: string): Promise<Blob> {
-  const response = await fetch(`/api/plugin/download/secure/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}?token=${encodeURIComponent(token)}`);
-  if (!response.ok) throw new Error('Failed to download JAR securely');
-  return response.blob();
-}
-
-export async function generateDownloadToken(userId: string, pluginName: string): Promise<DownloadToken> {
-  const response = await fetch(`/api/plugin/download/token/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (!response.ok) throw new Error('Failed to generate download token');
-  return response.json();
-}
-
-// JAR Management
-export async function syncJarToDatabase(userId: string, pluginName: string): Promise<boolean> {
-  const response = await fetch(`/api/plugin/jar-sync/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`, {
-    method: 'PUT',
-  });
-  if (!response.ok) throw new Error('Failed to sync JAR');
-  const data = await response.json();
-  return data.success;
-}
-
-export async function getPluginList(userId: string): Promise<Plugin[]> {
-  const response = await fetch(`/api/plugin/list/${encodeURIComponent(userId)}`);
-  if (!response.ok) throw new Error('Failed to get plugin list');
-  return response.json();
-}
-
-export async function getPluginDetails(userId: string, pluginName: string): Promise<Plugin> {
-  const response = await fetch(`/api/plugin/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`);
-  if (!response.ok) throw new Error('Failed to get plugin details');
-  return response.json();
-}
-
-// Enhanced JAR operations with better error handling
+/**
+ * Get JAR info with fallback (for compatibility)
+ */
 export async function getJarInfoWithFallback(userId: string, pluginName: string): Promise<JarFileInfo> {
   try {
     return await getJarInfo(userId, pluginName);
@@ -108,9 +91,7 @@ export async function getJarInfoWithFallback(userId: string, pluginName: string)
       fileName: `${pluginName}.jar`,
       fileSize: 0,
       lastModified: new Date().toISOString(),
-      checksum: undefined,
-      downloadUrl: `/api/plugin/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`,
-      secureDownloadUrl: `/api/plugin/download/secure/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`,
+      downloadUrl: `${API_BASE_URL}/download?userId=${encodeURIComponent(userId)}&pluginName=${encodeURIComponent(pluginName)}`,
       metadata: {
         version: '1.0.0',
         author: 'Unknown',
@@ -122,7 +103,9 @@ export async function getJarInfoWithFallback(userId: string, pluginName: string)
   }
 }
 
-// Batch operations
+/**
+ * Get multiple JAR infos using external API
+ */
 export async function getMultipleJarInfos(userId: string, pluginNames: string[]): Promise<Record<string, JarFileInfo>> {
   const results = await Promise.allSettled(
     pluginNames.map(pluginName => getJarInfoWithFallback(userId, pluginName))
@@ -140,9 +123,7 @@ export async function getMultipleJarInfos(userId: string, pluginNames: string[])
         fileName: `${pluginName}.jar`,
         fileSize: 0,
         lastModified: new Date().toISOString(),
-        checksum: undefined,
-        downloadUrl: `/api/plugin/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`,
-        secureDownloadUrl: `/api/plugin/download/secure/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`,
+        downloadUrl: `${API_BASE_URL}/download?userId=${encodeURIComponent(userId)}&pluginName=${encodeURIComponent(pluginName)}`,
         metadata: {
           version: '1.0.0',
           author: 'Unknown',
@@ -156,3 +137,21 @@ export async function getMultipleJarInfos(userId: string, pluginNames: string[])
   
   return jarInfos;
 }
+
+// Plugin list functions (these still use internal API since they're not download-related)
+export async function getPluginList(userId: string): Promise<Plugin[]> {
+  const response = await fetch(`/api/plugin/list/${encodeURIComponent(userId)}`);
+  if (!response.ok) throw new Error('Failed to get plugin list');
+  return response.json();
+}
+
+export async function getPluginDetails(userId: string, pluginName: string): Promise<Plugin> {
+  const response = await fetch(`/api/plugin/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`);
+  if (!response.ok) throw new Error('Failed to get plugin details');
+  return response.json();
+}
+
+// Legacy functions removed:
+// - downloadJarSecure (not needed with external API)
+// - generateDownloadToken (not needed with external API)
+// - syncJarToDatabase (not needed with external API)

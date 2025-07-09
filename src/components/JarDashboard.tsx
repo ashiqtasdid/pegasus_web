@@ -16,7 +16,7 @@ import {
   AlertCircle,
   Clock
 } from 'lucide-react';
-import { getPluginList, getMultipleJarInfos, downloadJar, syncJarToDatabase, type Plugin, type JarFileInfo } from '@/lib/jar-api';
+import { getPluginList, getMultipleJarInfos, downloadJar, type Plugin, type JarFileInfo } from '@/lib/jar-api';
 
 interface JarDashboardProps {
   userId: string;
@@ -77,19 +77,18 @@ export default function JarDashboard({ userId }: JarDashboardProps) {
     }
   };
 
-  const handleSync = async (pluginName: string) => {
+  const handleRefresh = async (pluginName: string) => {
     try {
       setSyncing(prev => new Set(prev).add(pluginName));
       
-      await syncJarToDatabase(userId, pluginName);
+      // Refresh JAR info from external API
+      const newJarInfo = await getMultipleJarInfos(userId, [pluginName]);
+      setJarInfos(prev => ({ ...prev, ...newJarInfo }));
       
-      // Refresh data after sync
-      await loadData();
-      
-      showNotification(`${pluginName} JAR synced successfully!`, 'success');
+      showNotification(`${pluginName} JAR info refreshed successfully!`, 'success');
     } catch (error) {
-      console.error('Sync failed:', error);
-      showNotification(`Sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      console.error('Refresh failed:', error);
+      showNotification(`Refresh failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setSyncing(prev => {
         const newSet = new Set(prev);
@@ -211,7 +210,7 @@ export default function JarDashboard({ userId }: JarDashboardProps) {
               plugin={plugin}
               jarInfo={jarInfos[plugin.pluginName]}
               onDownload={() => handleDownload(plugin.pluginName)}
-              onSync={() => handleSync(plugin.pluginName)}
+              onSync={() => handleRefresh(plugin.pluginName)}
               isLoading={loading}
               isSyncing={syncing.has(plugin.pluginName)}
               formatFileSize={formatFileSize}

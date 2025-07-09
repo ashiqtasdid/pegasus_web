@@ -4,8 +4,9 @@ import { getSessionCookie } from "better-auth/cookies";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow access to auth pages, API routes, and static assets
+  // Allow access to auth pages, API routes, static assets, and the root landing page
   if (
+    pathname === '/' || // Allow access to landing page
     pathname.startsWith('/auth') || 
     pathname.startsWith('/api/') ||
     pathname.startsWith('/_next/') ||
@@ -15,10 +16,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for session cookie for all other routes
+  // Check for session cookie for all other routes (dashboard, etc.)
   const sessionCookie = getSessionCookie(request);
 
-  // If no session cookie, redirect to auth
+  // If no session cookie, redirect to auth for protected routes
   if (!sessionCookie) {
     return NextResponse.redirect(new URL('/auth', request.url));
   }

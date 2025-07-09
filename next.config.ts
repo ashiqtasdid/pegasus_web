@@ -7,11 +7,24 @@ const nextConfig: NextConfig = {
   // Disable source maps in development to avoid 404 errors
   productionBrowserSourceMaps: false,
   
+  // Configure external image domains
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'i.pravatar.cc',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
+  
   // Explicitly define environment variables for the client
   env: {
     NEXT_PUBLIC_BETTER_AUTH_URL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
     NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
     DEVELOP: process.env.DEVELOP,
+    NEXT_PUBLIC_DEVELOP: process.env.NEXT_PUBLIC_DEVELOP,
   },
   
   // Configure webpack to handle MongoDB optional dependencies

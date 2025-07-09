@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { jarStorageService } from '@/lib/jar-storage-service';
+import { getJarInfo } from '@/lib/jar-api';
 
 export async function GET(
   request: NextRequest,
@@ -36,14 +36,21 @@ export async function GET(
       }, { status: 403 });
     }
 
-    console.log('Checking JAR existence in database:', { userId, pluginName });
+    console.log('Checking JAR existence using external API:', { userId, pluginName });
     
-    // Check JAR existence directly in MongoDB
-    const exists = await jarStorageService.jarExists(userId, pluginName);
-    
-    console.log('JAR existence check result:', { userId, pluginName, exists });
+    // Check JAR existence using external API
+    try {
+      const jarInfo = await getJarInfo(userId, pluginName);
+      const exists = jarInfo.available;
+      
+      console.log('JAR existence check result:', { userId, pluginName, exists });
 
-    return NextResponse.json({ exists });
+      return NextResponse.json({ exists });
+    } catch {
+      // If the external API call fails, assume the JAR doesn't exist
+      console.log('JAR not found via external API:', { userId, pluginName });
+      return NextResponse.json({ exists: false });
+    }
 
   } catch (error) {
     console.error('Error checking JAR existence:', error);

@@ -4,7 +4,6 @@ import {
   getJarInfo, 
   getMultipleJarInfos, 
   downloadJar, 
-  syncJarToDatabase, 
   type Plugin, 
   type JarFileInfo 
 } from '@/lib/jar-api';
@@ -21,7 +20,7 @@ export interface JarStorageActions {
   loadData: () => Promise<void>;
   refreshPlugin: (pluginName: string) => Promise<void>;
   downloadPlugin: (pluginName: string) => Promise<void>;
-  syncPlugin: (pluginName: string) => Promise<void>;
+  refreshJarInfo: (pluginName: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -56,7 +55,7 @@ export function useJarStorage(userId: string): JarStorageState & JarStorageActio
     }
   }, [userId]);
 
-  const refreshPlugin = useCallback(async (pluginName: string) => {
+  const refreshJarInfo = useCallback(async (pluginName: string) => {
     if (!userId) return;
     
     try {
@@ -106,21 +105,23 @@ export function useJarStorage(userId: string): JarStorageState & JarStorageActio
     }
   }, [userId, jarInfos]);
 
-  const syncPlugin = useCallback(async (pluginName: string) => {
+  const refreshPlugin = useCallback(async (pluginName: string) => {
     if (!userId) return;
     
     try {
       setSyncing(prev => new Set(prev).add(pluginName));
       
-      await syncJarToDatabase(userId, pluginName);
+      // With external API, "refresh" means refresh the plugin info
+      const jarInfo = await getJarInfo(userId, pluginName);
+      setJarInfos(prev => ({
+        ...prev,
+        [pluginName]: jarInfo
+      }));
       
-      // Refresh the plugin info after sync
-      await refreshPlugin(pluginName);
-      
-      showNotification(`${pluginName} JAR synced successfully!`, 'success');
+      showNotification(`${pluginName} JAR info refreshed successfully!`, 'success');
     } catch (error) {
-      console.error(`Sync failed for ${pluginName}:`, error);
-      showNotification(`Sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      console.error(`Refresh failed for ${pluginName}:`, error);
+      showNotification(`Refresh failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
       throw error;
     } finally {
       setSyncing(prev => {
@@ -129,7 +130,7 @@ export function useJarStorage(userId: string): JarStorageState & JarStorageActio
         return newSet;
       });
     }
-  }, [userId, refreshPlugin]);
+  }, [userId]);
 
   const clearError = useCallback(() => {
     setError(null);
@@ -151,7 +152,7 @@ export function useJarStorage(userId: string): JarStorageState & JarStorageActio
     loadData,
     refreshPlugin,
     downloadPlugin,
-    syncPlugin,
+    refreshJarInfo,
     clearError
   };
 }
@@ -216,29 +217,56 @@ export function useJarBatchOperations(userId: string) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const syncMultipleJars = useCallback(async (pluginNames: string[]) => {
-    if (!userId || pluginNames.length === 0) return;
+  const refreshMultipleJars = useCallback(async (pluginNames: string[]): Promise<Record<string, JarFileInfo>> => {
+    if (!userId || pluginNames.length === 0) return {};
     
     try {
       setLoading(true);
       setError(null);
       
       const results = await Promise.allSettled(
-        pluginNames.map(pluginName => syncJarToDatabase(userId, pluginName))
+        pluginNames.map(async (pluginName) => {
+          const jarInfo = await getJarInfo(userId, pluginName);
+          return { pluginName, jarInfo };
+        })
       );
       
-      const failed = results.filter(r => r.status === 'rejected');
-      const succeeded = results.filter(r => r.status === 'fulfilled');
+      const jarInfoMap: Record<string, JarFileInfo> = {};
+      const failed: string[] = [];
+      const succeeded: string[] = [];
+      
+      results.forEach((result, index) => {
+        const pluginName = pluginNames[index];
+        if (result.status === 'fulfilled') {
+          jarInfoMap[pluginName] = result.value.jarInfo;
+          succeeded.push(pluginName);
+        } else {
+          // Set unavailable status for failed plugins
+          jarInfoMap[pluginName] = {
+            available: false,
+            fileName: `${pluginName}.jar`,
+            fileSize: 0,
+            lastModified: new Date().toISOString()
+          };
+          failed.push(pluginName);
+        }
+      });
       
       if (failed.length > 0) {
-        throw new Error(`${failed.length} out of ${pluginNames.length} syncs failed`);
+        const message = `${failed.length} out of ${pluginNames.length} refreshes failed`;
+        showNotification(message, 'error');
+        console.warn('Failed to refresh:', failed);
       }
       
-      showNotification(`Successfully synced ${succeeded.length} JAR files!`, 'success');
+      if (succeeded.length > 0) {
+        showNotification(`Successfully refreshed ${succeeded.length} JAR files!`, 'success');
+      }
+      
+      return jarInfoMap;
     } catch (error) {
-      console.error('Batch sync failed:', error);
-      setError(error instanceof Error ? error.message : 'Batch sync failed');
-      showNotification(`Batch sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      console.error('Batch refresh failed:', error);
+      setError(error instanceof Error ? error.message : 'Batch refresh failed');
+      showNotification(`Batch refresh failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
       throw error;
     } finally {
       setLoading(false);
@@ -287,7 +315,7 @@ export function useJarBatchOperations(userId: string) {
   return {
     loading,
     error,
-    syncMultipleJars,
+    refreshMultipleJars,
     downloadMultipleJars,
     clearError: () => setError(null)
   };

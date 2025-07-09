@@ -1,4 +1,5 @@
 import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
+import { createHash } from 'crypto';
 
 // Database connection
 const getDatabase = (): Db => {
@@ -57,12 +58,13 @@ class JarStorageService {
     });
   }
 
-  // Download JAR file and increment download count (if we track it)
+  // Download JAR file with integrity validation
   async downloadJarFile(userId: string, pluginName: string): Promise<{
     buffer: Buffer;
     fileName: string;
     fileSize: number;
     contentType: string;
+    checksum?: string;
   } | null> {
     const plugin = await this.collection.findOne({ 
       userId, 
@@ -75,11 +77,36 @@ class JarStorageService {
       return null;
     }
 
+    // CORRUPTION PREVENTION: Validate buffer type
+    if (!Buffer.isBuffer(plugin.jarFile)) {
+      console.error('JAR file is not a valid Buffer:', typeof plugin.jarFile);
+      return null;
+    }
+
+    // Validate buffer content
+    if (plugin.jarFile.length === 0) {
+      console.error('JAR file buffer is empty');
+      return null;
+    }
+
+    // Calculate current checksum for integrity verification
+    const currentChecksum = createHash('sha256').update(plugin.jarFile).digest('hex');
+
+    // Log checksum info for debugging
+    console.log('JAR checksum validation:', {
+      userId,
+      pluginName,
+      storedChecksum: plugin.jarFileChecksum,
+      currentChecksum,
+      matches: plugin.jarFileChecksum === currentChecksum
+    });
+
     return {
       buffer: plugin.jarFile,
       fileName: plugin.jarFileName || `${pluginName}.jar`,
       fileSize: plugin.jarFileSize || plugin.jarFile.length,
-      contentType: 'application/java-archive'
+      contentType: 'application/java-archive',
+      checksum: currentChecksum
     };
   }
 

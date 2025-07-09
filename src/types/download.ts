@@ -1,4 +1,4 @@
-// types/download.ts
+// types/download.ts - Unified External Download API Types
 export interface DownloadInfo {
   available: boolean;
   jarFile?: string;
@@ -6,8 +6,6 @@ export interface DownloadInfo {
   lastModified?: string;
   checksum?: string;
   downloadUrl?: string;
-  secureDownloadUrl?: string;
-  temporaryToken?: string;
   metadata?: {
     version?: string;
     author?: string;
@@ -36,30 +34,20 @@ export interface DownloadError {
 export interface DownloadOptions {
   userId: string;
   pluginName: string;
-  useSecureDownload?: boolean;
-  token?: string;
   onProgress?: (progress: DownloadProgress) => void;
-  onError?: (error: DownloadError) => void;
+  onError?: (error: string) => void;
   onComplete?: (result: DownloadResult) => void;
   maxRetries?: number;
-  chunkSize?: number;
 }
 
 export interface DownloadResult {
   success: boolean;
-  fileName?: string;
-  fileSize?: number;
+  filename?: string;
+  size?: number;
   downloadDuration?: number;
   checksum?: string;
   blob?: Blob;
-  error?: DownloadError;
-}
-
-export interface DownloadToken {
-  token: string;
-  expiresAt: string;
-  maxDownloads: number;
-  downloadCount?: number;
+  error?: string;
 }
 
 export interface DownloadAnalytics {
@@ -70,5 +58,11 @@ export interface DownloadAnalytics {
   topPlugins: Array<{
     pluginName: string;
     downloadCount: number;
+    totalSize: number;
+  }>;
+  errorRate: number;
+  peakDownloadTimes: Array<{
+    hour: number;
+    count: number;
   }>;
 }

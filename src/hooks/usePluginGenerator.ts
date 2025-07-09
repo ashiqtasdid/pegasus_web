@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { getJarInfo, type JarFileInfo } from '@/lib/jar-api';
+import { getJarInfo, downloadJar as downloadJarAPI, type JarFileInfo } from '@/lib/jar-api';
 
 interface FormData {
   prompt: string;
@@ -343,95 +343,41 @@ export function usePluginGenerator() {
       `;
       document.body.appendChild(toast);
       
-      const downloadUrl = `/api/plugin/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`;
       const filename = `${pluginName}.jar`;
       
-      console.log('Attempting direct download...');
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000);
+      console.log('Using unified external download API...');
       
-      try {
-        const response = await fetch(downloadUrl, {
-          method: 'GET',
-          signal: controller.signal,
-          headers: {
-            'Accept': 'application/java-archive, application/octet-stream, */*',
-            'Cache-Control': 'no-cache'
-          }
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          throw new Error(`Download failed: ${response.status} ${response.statusText}`);
-        }
-
-        const blob = await response.blob();
-        
-        if (blob.size === 0) {
-          throw new Error('Downloaded file is empty - please try recompiling the plugin');
-        }
-        
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+      // Use the unified external download API
+      const blob = await downloadJarAPI(userId, pluginName);
+      
+      if (blob.size === 0) {
+        throw new Error('Downloaded file is empty - please try recompiling the plugin');
+      }
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      setTimeout(() => {
+        toast.innerHTML = `
+          <div style="color: #10b981;">✓</div>
+          Download complete: ${filename} (${(blob.size / 1024).toFixed(1)}KB)
+        `;
+        toast.style.background = '#059669';
         
         setTimeout(() => {
-          toast.innerHTML = `
-            <div style="color: #10b981;">✓</div>
-            Download complete: ${filename} (${(blob.size / 1024).toFixed(1)}KB)
-          `;
-          toast.style.background = '#059669';
-          
-          setTimeout(() => {
-            if (toast.parentNode) {
-              toast.remove();
-            }
-          }, 3000);
-        }, 500);
-        
-        console.log('Direct download completed successfully:', filename, 'Size:', blob.size, 'bytes');
-        
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
-        console.warn('Direct download failed, trying alternative method:', fetchError);
-        
-        try {
-          const link = document.createElement('a');
-          link.href = downloadUrl;
-          link.download = filename;
-          link.style.display = 'none';
-          
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          
-          setTimeout(() => {
-            toast.innerHTML = `
-              <div style="color: #10b981;">✓</div>
-              Download started: ${filename}
-            `;
-            toast.style.background = '#059669';
-            
-            setTimeout(() => {
-              if (toast.parentNode) {
-                toast.remove();
-              }
-            }, 3000);
-          }, 500);
-          
-          console.log('Alternative download triggered successfully:', filename);
-          
-        } catch (directError) {
-          console.error('Both download methods failed:', directError);
-          throw new Error('JAR file not found - please compile the plugin first');
-        }
-      }
+          if (toast.parentNode) {
+            toast.remove();
+          }
+        }, 3000);
+      }, 500);
+      
+      console.log('Unified download completed successfully:', filename, 'Size:', blob.size, 'bytes');
       
     } catch (error) {
       console.error('JAR download error:', error);
