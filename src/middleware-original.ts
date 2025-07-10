@@ -22,13 +22,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // TEMPORARY: Bypass middleware for debugging - allow all dashboard access
-  // Remove this once cookie issue is resolved
-  if (pathname.startsWith('/dashboard') || pathname.startsWith('/users')) {
-    console.log('TEMPORARY BYPASS: Allowing dashboard access for debugging');
-    return NextResponse.next();
-  }
-
   // Check for Better Auth session cookies (try multiple possible cookie names)
   const sessionTokens = [
     request.cookies.get('better-auth.session_token'),
@@ -58,7 +51,19 @@ export async function middleware(request: NextRequest) {
   // Cookie exists, allow through - full validation happens server-side
   console.log('Session cookie found, allowing access to:', pathname);
   return NextResponse.next();
-
-  // No match, allow through (shouldn't reach here)
-  return NextResponse.next();
 }
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - installHook (development files)
+     * - .js.map (source maps)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.js\\.map|installHook).*)',
+  ]
+};

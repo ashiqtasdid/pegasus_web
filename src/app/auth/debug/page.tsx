@@ -68,6 +68,53 @@ export default function AuthDebugPage() {
                 <button
                   onClick={async () => {
                     try {
+                      const response = await fetch('/api/debug/cookies');
+                      const result = await response.json();
+                      console.log('Cookie test result:', result);
+                      alert('Cookie test completed! Check console for details.');
+                    } catch (error) {
+                      console.error('Cookie test error:', error);
+                      alert('Cookie test failed: ' + error);
+                    }
+                  }}
+                  className="bg-purple-600 text-white px-4 py-2 rounded mr-4 mb-2"
+                >
+                  🧪 Test Cookie Detection
+                </button>
+
+                <button
+                  onClick={async () => {
+                    try {
+                      // Get the current session token if available
+                      const sessionData = session;
+                      if (!sessionData?.session?.token) {
+                        alert('No session token found to set cookie with');
+                        return;
+                      }
+                      
+                      const response = await fetch('/api/debug/cookies', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: sessionData.session.token }),
+                        credentials: 'include'
+                      });
+                      const result = await response.json();
+                      console.log('Direct cookie set result:', result);
+                      alert('Direct cookie set completed! Refresh page to see cookies.');
+                      setTimeout(() => window.location.reload(), 1000);
+                    } catch (error) {
+                      console.error('Direct cookie set error:', error);
+                      alert('Direct cookie set failed: ' + error);
+                    }
+                  }}
+                  className="bg-orange-600 text-white px-4 py-2 rounded mr-4 mb-2"
+                >
+                  🍪 Set Cookie Directly
+                </button>
+
+                <button
+                  onClick={async () => {
+                    try {
                       const response = await fetch('/api/auth/force-cookie-sync', {
                         method: 'POST',
                         credentials: 'include'
