@@ -60,6 +60,31 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
         setError(result.error.message || 'Login failed');
       } else {
         console.log('Login successful, redirecting...');
+        
+        // Manually set the session cookie if it's not being set automatically
+        if (result.data?.token) {
+          const token = result.data.token;
+          console.log('Setting session cookie manually with token:', token);
+          
+          // Set multiple cookie variations to ensure compatibility
+          const cookieNames = [
+            'better-auth.session_token',
+            'better-auth.session',
+            'session_token'
+          ];
+          
+          cookieNames.forEach(cookieName => {
+            // For production (secure)
+            if (window.location.protocol === 'https:') {
+              document.cookie = `${cookieName}=${token}; path=/; domain=.${window.location.hostname}; secure; samesite=lax; max-age=604800`;
+              document.cookie = `${cookieName}=${token}; path=/; domain=${window.location.hostname}; secure; samesite=lax; max-age=604800`;
+            } else {
+              // For development (non-secure)
+              document.cookie = `${cookieName}=${token}; path=/; samesite=lax; max-age=604800`;
+            }
+          });
+        }
+        
         // Small delay to ensure session is properly set
         setTimeout(() => {
           onSuccess?.();

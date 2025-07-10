@@ -3,10 +3,15 @@ import { auth } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('=== COOKIE SYNC DEBUG ===');
+    console.log('Request headers:', Object.fromEntries(request.headers.entries()));
+    
     // Get the current session
     const session = await auth.api.getSession({
       headers: request.headers,
     });
+
+    console.log('Session from auth.api.getSession:', session);
 
     if (!session) {
       return NextResponse.json({ error: 'No session found' }, { status: 401 });
@@ -16,18 +21,54 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({ 
       success: true, 
       session: session,
-      message: 'Session cookie synchronized'
+      message: 'Session cookie synchronized',
+      debug: {
+        sessionToken: session.session?.token,
+        userId: session.user?.id,
+        domain: request.headers.get('host'),
+      }
     });
 
-    // Manually set the session cookie with proper options for production
-    const cookieName = 'better-auth.session_token';
-    const cookieValue = session.session.token;
-    
-    const cookieOptions = process.env.NODE_ENV === 'production' 
-      ? 'HttpOnly; Secure; SameSite=Lax; Path=/; Domain=moonlitservers.com; Max-Age=604800'
-      : 'HttpOnly; SameSite=Lax; Path=/; Max-Age=604800';
+    // Try multiple cookie names and formats that Better Auth might use
+    const cookieNames = [
+      'better-auth.session_token',
+      'better-auth.session',
+      'authjs.session-token',
+      'session_token'
+    ];
 
-    response.headers.set('Set-Cookie', `${cookieName}=${cookieValue}; ${cookieOptions}`);
+    const sessionToken = session.session?.token;
+    const host = request.headers.get('host') || 'moonlitservers.com';
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (sessionToken) {
+      console.log('Setting cookies with token:', sessionToken);
+      
+      // Set multiple cookie variations to ensure one works
+      cookieNames.forEach(cookieName => {
+        const cookieValue = sessionToken;
+        
+        if (isProduction) {
+          // Production cookie settings
+          response.headers.append('Set-Cookie', 
+            `${cookieName}=${cookieValue}; HttpOnly; Secure; SameSite=Lax; Path=/; Domain=.${host}; Max-Age=604800`
+          );
+          // Also try without the domain prefix
+          response.headers.append('Set-Cookie', 
+            `${cookieName}=${cookieValue}; HttpOnly; Secure; SameSite=Lax; Path=/; Domain=${host}; Max-Age=604800`
+          );
+        } else {
+          // Development cookie settings
+          response.headers.append('Set-Cookie', 
+            `${cookieName}=${cookieValue}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800`
+          );
+        }
+      });
+
+      console.log('Response headers being set:', response.headers.getSetCookie());
+    } else {
+      console.log('No session token found in session object');
+    }
 
     return response;
   } catch (error) {
