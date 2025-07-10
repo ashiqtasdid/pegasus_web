@@ -1,56 +1,24 @@
 import { auth } from "@/lib/auth";
 import { toNextJsHandler } from "better-auth/next-js";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
 const handlers = toNextJsHandler(auth);
 
-// Get the allowed origin based on environment and request
-const getAllowedOrigin = (request?: NextRequest) => {
-  // Use environment variable if available
-  const authUrl = process.env.NEXT_PUBLIC_BETTER_AUTH_URL || process.env.BETTER_AUTH_URL;
-  if (authUrl) {
-    return authUrl;
-  }
-    // In development, use the request's origin if available, fallback to localhost:3000
-  if (request) {
-    const origin = request.headers.get('origin');
-    if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
-      return origin;
-    }
-  }
-  
-  return 'http://localhost:3000';
-};
-
-// Add CORS headers to response
-const addCorsHeaders = (response: Response) => {
-  const allowedOrigin = getAllowedOrigin();
-  
-  response.headers.set('Access-Control-Allow-Origin', allowedOrigin);
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie, X-Requested-With');
-  response.headers.set('Access-Control-Allow-Credentials', 'true');
-  
-  return response;
-};
-
+// Since we're using Better Auth's built-in CORS, we can simplify this
 export async function GET(request: NextRequest) {
-  const response = await handlers.GET(request);
-  return addCorsHeaders(response);
+  return handlers.GET(request);
 }
 
 export async function POST(request: NextRequest) {
-  const response = await handlers.POST(request);
-  return addCorsHeaders(response);
+  return handlers.POST(request);
 }
 
 export async function OPTIONS() {
-  const allowedOrigin = getAllowedOrigin();
-  
-  return new NextResponse(null, {
+  // Handle preflight requests
+  return new Response(null, { 
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': allowedOrigin,
+      'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie, X-Requested-With',
       'Access-Control-Allow-Credentials': 'true',

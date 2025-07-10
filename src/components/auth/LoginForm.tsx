@@ -46,18 +46,28 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
     setError('');
 
     try {
+      console.log('Attempting email login for:', email);
+      
       const result = await authClient.signIn.email({
         email,
         password,
       });
 
+      console.log('Login result:', result);
+
       if (result.error) {
+        console.error('Login error:', result.error);
         setError(result.error.message || 'Login failed');
       } else {
-        onSuccess?.();
-      }    } catch (err) {
-      console.error('Login error:', err);
-      setError('An unexpected error occurred');
+        console.log('Login successful, redirecting...');
+        // Small delay to ensure session is properly set
+        setTimeout(() => {
+          onSuccess?.();
+        }, 500);
+      }
+    } catch (err) {
+      console.error('Login exception:', err);
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -68,13 +78,18 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
     setError('');
 
     try {
+      console.log('Attempting GitHub login...');
+      
       await authClient.signIn.social({
         provider: 'github',
         callbackURL: '/dashboard'
       });
+      
+      // Note: This won't execute if redirect happens immediately
+      console.log('GitHub login initiated');
     } catch (err) {
       console.error('GitHub login error:', err);
-      setError('GitHub login failed');
+      setError('GitHub login failed. Please try again.');
       setIsLoading(false);
     }
   };

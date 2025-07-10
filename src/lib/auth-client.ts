@@ -2,19 +2,47 @@
 
 import { createAuthClient } from "better-auth/react";
 
-// Frontend runs on port 3000 (with auth endpoints), backend API runs on port 3001
-const HARDCODED_BASE_URL = process.env.NEXT_PUBLIC_BETTER_AUTH_URL || "http://localhost:3000";
+// Get the base URL for auth endpoints
+const getBaseURL = () => {
+  // In production, use the current origin
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  
+  // Fallback to environment variables or localhost
+  return process.env.NEXT_PUBLIC_BETTER_AUTH_URL || 
+         process.env.NEXT_PUBLIC_APP_URL || 
+         "http://localhost:3000";
+};
 
-// Log to console to verify what's being used 
+const baseURL = getBaseURL();
+
+// Enhanced logging for production debugging
 if (typeof window !== 'undefined') {
   console.log('=== AUTH CLIENT CONFIG ===');
-  console.log('Auth API Base URL:', HARDCODED_BASE_URL);
+  console.log('Node Environment:', process.env.NODE_ENV);
+  console.log('Auth API Base URL:', baseURL);
   console.log('Frontend location:', window.location.href);
+  console.log('Environment Variables:');
+  console.log('  NEXT_PUBLIC_BETTER_AUTH_URL:', process.env.NEXT_PUBLIC_BETTER_AUTH_URL);
+  console.log('  NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL);
   console.log('========================');
 }
 
 export const authClient = createAuthClient({
-  baseURL: HARDCODED_BASE_URL,
+  baseURL,
+  // Add fetch config for better error handling
+  fetchOptions: {
+    onError: (context) => {
+      console.error('Auth client error:', context);
+    },
+    onRequest: (context) => {
+      console.log('Auth request:', context.url);
+    },
+    onResponse: (context) => {
+      console.log('Auth response:', context.response.status);
+    },
+  },
 });
 
 // Export useful methods for easier imports

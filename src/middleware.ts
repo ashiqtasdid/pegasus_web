@@ -15,14 +15,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Simple cookie-based check (Edge Runtime compatible)
-  // This only checks for session cookie presence, not validity
-  // Full session validation happens in server components and API routes
-  const sessionCookie = request.cookies.get('better-auth.session_token');
+  // Check for Better Auth session cookies (try multiple possible cookie names)
+  const sessionTokens = [
+    request.cookies.get('better-auth.session_token'),
+    request.cookies.get('better-auth.session'),
+    request.cookies.get('session_token'),
+    request.cookies.get('authjs.session-token'), // fallback
+  ].filter(Boolean);
   
-  if (!sessionCookie || !sessionCookie.value) {
-    console.log('No session cookie found, redirecting to auth');
-    return NextResponse.redirect(new URL('/auth', request.url));
+  // If no session cookies found, redirect to auth
+  if (sessionTokens.length === 0) {
+    console.log('No session cookies found, redirecting to auth from:', pathname);
+    const response = NextResponse.redirect(new URL('/auth', request.url));
+    
+    // Clear any potentially corrupted cookies
+    response.cookies.delete('better-auth.session_token');
+    response.cookies.delete('better-auth.session');
+    response.cookies.delete('session_token');
+    
+    return response;
   }
 
   // Cookie exists, allow through - full validation happens server-side

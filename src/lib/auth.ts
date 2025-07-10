@@ -7,18 +7,55 @@ import { MongoClient } from "mongodb";
 const client = new MongoClient(process.env.MONGODB_URI!);
 const db = client.db("pegasus_auth");
 
-export const auth = betterAuth({
-  database: mongodbAdapter(db),
-    // Frontend (with auth) runs on port 3000, backend API runs on port 3001
-  baseURL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL || "http://localhost:3000",
-  trustedOrigins: [
+// Get the base URL for production vs development
+const getBaseURL = () => {
+  // Production: Use the public app URL
+  if (process.env.NODE_ENV === 'production') {
+    return process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BETTER_AUTH_URL;
+  }
+  
+  // Development: Use localhost
+  return process.env.NEXT_PUBLIC_BETTER_AUTH_URL || "http://localhost:3000";
+};
+
+const baseURL = getBaseURL();
+
+// Build trusted origins list
+const getTrustedOrigins = () => {
+  const origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://0.0.0.0:3000",
-  ],
+  ];
   
-  // Disable Better Auth's built-in CORS - we handle it in the route handler
-  cors: false,
+  // Add Vercel preview URLs
+  if (process.env.VERCEL_URL) {
+    origins.push(`https://${process.env.VERCEL_URL}`);
+  }
+  
+  // Add production URL
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    origins.push(process.env.NEXT_PUBLIC_APP_URL);
+  }
+  
+  // Add Better Auth URL if different
+  if (process.env.NEXT_PUBLIC_BETTER_AUTH_URL && process.env.NEXT_PUBLIC_BETTER_AUTH_URL !== process.env.NEXT_PUBLIC_APP_URL) {
+    origins.push(process.env.NEXT_PUBLIC_BETTER_AUTH_URL);
+  }
+  
+  return [...new Set(origins)].filter(Boolean); // Remove duplicates and falsy values
+};
+
+export const auth = betterAuth({
+  database: mongodbAdapter(db),
+  baseURL,
+  trustedOrigins: getTrustedOrigins(),
+  
+  // Enable CORS with proper configuration
+  cors: {
+    origin: getTrustedOrigins(),
+    credentials: true,
+  },
   
   emailAndPassword: {
     enabled: true,
@@ -53,6 +90,9 @@ export const auth = betterAuth({
   advanced: {
     cookiePrefix: "better-auth", // Explicit prefix for clarity
     useSecureCookies: process.env.NODE_ENV === 'production',
+    crossSubDomainCookies: {
+      enabled: false, // Disable unless you need cross-subdomain auth
+    },
   },
   
   user: {
