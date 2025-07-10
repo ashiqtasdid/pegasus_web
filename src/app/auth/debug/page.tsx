@@ -64,6 +64,26 @@ export default function AuthDebugPage() {
                 Test Auth API (/api/auth/session)
               </button>
               <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/auth/force-cookie-sync', {
+                      method: 'POST',
+                      credentials: 'include'
+                    });
+                    const result = await response.json();
+                    alert(response.ok ? 'Cookie sync successful! Refresh page to see cookies.' : `Cookie sync failed: ${result.error}`);
+                    if (response.ok) {
+                      window.location.reload();
+                    }
+                  } catch (error) {
+                    alert('Cookie sync failed: ' + error);
+                  }
+                }}
+                className="bg-green-600 text-white px-4 py-2 rounded mr-4"
+              >
+                🔄 Force Cookie Sync
+              </button>
+              <button
                 onClick={() => window.location.href = '/auth'}
                 className="bg-secondary text-secondary-foreground px-4 py-2 rounded mr-4"
               >

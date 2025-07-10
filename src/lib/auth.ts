@@ -9,9 +9,9 @@ const db = client.db("pegasus_auth");
 
 // Get the base URL for production vs development
 const getBaseURL = () => {
-  // Production: Use the public app URL
+  // Production: Use the public app URL or Better Auth URL
   if (process.env.NODE_ENV === 'production') {
-    return process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BETTER_AUTH_URL;
+    return process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BETTER_AUTH_URL || "https://moonlitservers.com";
   }
   
   // Development: Use localhost
@@ -93,6 +93,16 @@ export const auth = betterAuth({
     crossSubDomainCookies: {
       enabled: false, // Disable unless you need cross-subdomain auth
     },
+    // Explicitly set cookie options for production
+    ...(process.env.NODE_ENV === 'production' && {
+      cookieOptions: {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        domain: 'moonlitservers.com',
+        path: '/',
+      },
+    }),
   },
   
   user: {
