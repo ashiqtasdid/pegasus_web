@@ -32,13 +32,13 @@ const BannedPage = () => {
 
   const handleSignOut = async () => {
     try {
-      // Clear session and redirect to auth
+      // Clear session and redirect to landing page
       await fetch('/api/auth/sign-out', { method: 'POST' });
-      window.location.href = '/auth';
+      window.location.href = '/';
     } catch (error) {
       console.error('Error signing out:', error);
-      // Fallback: redirect to auth page
-      window.location.href = '/auth';
+      // Fallback: redirect to landing page
+      window.location.href = '/';
     }
   };
 

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Authentication Flow Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-step { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .fail { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Authentication Flow Test</h1>
+    <p>This test verifies that the authentication flow works correctly after the middleware changes.</p>
+    
+    <div class="test-step">
+        <h3>Test 1: Landing Page Access</h3>
+        <p>✓ The landing page should always be accessible without authentication</p>
+        <button onclick="window.open('http://localhost:3000', '_blank')">Test Landing Page</button>
+    </div>
+    
+    <div class="test-step">
+        <h3>Test 2: Dashboard Access (Unauthenticated)</h3>
+        <p>⚠️ Dashboard should redirect to /auth if not logged in</p>
+        <button onclick="window.open('http://localhost:3000/dashboard', '_blank')">Test Dashboard (Unauthenticated)</button>
+    </div>
+    
+    <div class="test-step">
+        <h3>Test 3: Sign In</h3>
+        <p>📝 Sign in with your credentials</p>
+        <button onclick="window.open('http://localhost:3000/auth', '_blank')">Go to Sign In</button>
+    </div>
+    
+    <div class="test-step">
+        <h3>Test 4: Dashboard Access (Authenticated)</h3>
+        <p>✓ Dashboard should be accessible after sign in</p>
+        <button onclick="window.open('http://localhost:3000/dashboard', '_blank')">Test Dashboard (Authenticated)</button>
+    </div>
+    
+    <div class="test-step">
+        <h3>Test 5: Logout</h3>
+        <p>🔓 Use the logout option in the dashboard and verify you can't access protected pages</p>
+        <button onclick="window.open('http://localhost:3000/test/logout', '_blank')">Test Logout Page</button>
+    </div>
+    
+    <div class="test-step">
+        <h3>Test 6: Post-Logout Protection</h3>
+        <p>⚠️ After logout, dashboard should redirect to /auth again</p>
+        <button onclick="window.open('http://localhost:3000/dashboard', '_blank')">Test Dashboard (After Logout)</button>
+    </div>
+
+    <h2>Expected Behavior:</h2>
+    <ul>
+        <li>✅ Landing page (/) always accessible</li>
+        <li>✅ Unauthenticated users redirected from /dashboard to /auth</li>
+        <li>✅ After sign in, users can access /dashboard</li>
+        <li>✅ After logout, users are redirected back to / (landing page)</li>
+        <li>✅ After logout, accessing /dashboard again requires re-authentication</li>
+        <li>✅ No more "Session validation failed, redirecting to auth" errors</li>
+    </ul>
+</body>
+</html>

@@ -111,8 +111,23 @@ export function UserProfile({ onClose }: UserProfileProps = {}) {
 
   const handleSignOut = async () => {
     try {
+      // Step 1: Call better-auth signOut
       await authClient.signOut();
-      router.push('/auth');
+      
+      // Step 2: Call comprehensive logout endpoint
+      await fetch('/api/auth/complete-logout', { 
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      // Step 3: Clear client-side storage
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+      }
+      
+      // Step 4: Force navigation to clear all state
+      window.location.href = '/';
     } catch (err) {
       console.error('Sign out error:', err);
     }

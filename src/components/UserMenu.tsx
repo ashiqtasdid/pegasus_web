@@ -38,10 +38,47 @@ export function UserMenu({ variant = 'sidebar', showEmail = true }: UserMenuProp
   const handleSignOut = async () => {
     try {
       setIsSigningOut(true);
+      
+      // Step 1: Call better-auth signOut
       await signOut();
-      router.push('/auth');
+      
+      // Step 2: Call our comprehensive logout endpoint
+      await fetch('/api/auth/complete-logout', { 
+        method: 'POST',
+        credentials: 'include' // Include cookies
+      });
+      
+      // Step 3: Clear client-side storage
+      if (typeof window !== 'undefined') {
+        // Clear localStorage
+        localStorage.clear();
+        
+        // Clear sessionStorage
+        sessionStorage.clear();
+        
+        // Clear any auth-related items specifically
+        const authKeys = [
+          'auth-token',
+          'session',
+          'user',
+          'better-auth.session',
+          'authjs.session-token'
+        ];
+        
+        authKeys.forEach(key => {
+          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
+        });
+      }
+      
+      // Step 4: Force reload to clear all application state
+      window.location.href = '/';
+      
     } catch (err) {
       console.error('Sign out error:', err);
+      
+      // Fallback: force navigation to landing page even if logout fails
+      window.location.href = '/';
     } finally {
       setIsSigningOut(false);
     }

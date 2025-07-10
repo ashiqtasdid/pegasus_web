@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionCookie } from "better-auth/cookies";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -16,17 +15,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for session cookie for all other routes (dashboard, etc.)
-  const sessionCookie = getSessionCookie(request);
-
-  // If no session cookie, redirect to auth for protected routes
-  if (!sessionCookie) {
+  // Simple cookie-based check (Edge Runtime compatible)
+  // This only checks for session cookie presence, not validity
+  // Full session validation happens in server components and API routes
+  const sessionCookie = request.cookies.get('better-auth.session_token');
+  
+  if (!sessionCookie || !sessionCookie.value) {
+    console.log('No session cookie found, redirecting to auth');
     return NextResponse.redirect(new URL('/auth', request.url));
   }
 
-  // For now, let the request through
-  // Ban checking will be handled by individual pages/components
-  // since Edge Runtime doesn't support MongoDB's Node.js dependencies
+  // Cookie exists, allow through - full validation happens server-side
+  // Server components and API routes will handle proper session validation
   return NextResponse.next();
 }
 

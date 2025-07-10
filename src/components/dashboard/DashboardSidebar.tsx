@@ -514,13 +514,21 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   }, [addToast, handleError]);
 
   // Handle logout
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
     try {
       addToast('Logging out...', 'info');
-      // Implement logout logic
-      setTimeout(() => {
-        window.location.href = '/auth';
-      }, 1000);
+      // Call server-side logout endpoint
+      await fetch('/api/auth/complete-logout', { method: 'POST', credentials: 'include' });
+      // Clear client storage
+      localStorage.clear();
+      sessionStorage.clear();
+      // Force session cache refresh
+      if (typeof window !== 'undefined') {
+        const { getSession } = await import('@/lib/auth-client');
+        await getSession({ query: { disableCookieCache: true } });
+      }
+      // Redirect to landing page
+      window.location.href = '/';
     } catch (error) {
       handleError(error instanceof Error ? error : new Error('Logout failed'), 'Logout');
     }

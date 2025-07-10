@@ -7,7 +7,15 @@ import { useEffect, useState } from 'react';
 import { Loader2, Rocket } from 'lucide-react';
 import Head from 'next/head';
 import Image from 'next/image';
-import { signOut } from '@/lib/auth-client';
+
+// Type for session
+type Session = {
+  user?: {
+    id?: string;
+    email?: string;
+    name?: string;
+  };
+} | null;
 
 // Icon Component
 interface IconProps {
@@ -53,7 +61,11 @@ const Icon: React.FC<IconProps> = ({ type, className = '' }) => {
 };
 
 // Header Component
-const Header: React.FC<{ onSignInClick: () => void }> = ({ onSignInClick }) => {
+const Header: React.FC<{ 
+  onSignInClick: () => void; 
+  session: Session; 
+  onDashboardClick: () => void; 
+}> = ({ onSignInClick, session, onDashboardClick }) => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#0A0F1F]/80 backdrop-blur-sm">
       <div className="container mx-auto px-6 py-4 flex justify-between items-center">
@@ -64,9 +76,15 @@ const Header: React.FC<{ onSignInClick: () => void }> = ({ onSignInClick }) => {
           <a href="#reviews" className="text-slate-300 hover:text-white transition-colors">Reviews</a>
           <a href="#waitlist" className="text-slate-300 hover:text-white transition-colors">Waitlist</a>
         </nav>
-        <button onClick={onSignInClick} className="hidden md:block bg-white text-slate-900 font-semibold px-4 py-2 rounded-lg hover:bg-slate-200 transition-colors">
-          Sign In
-        </button>
+        {session ? (
+          <button onClick={onDashboardClick} className="hidden md:block bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+            Go to Dashboard
+          </button>
+        ) : (
+          <button onClick={onSignInClick} className="hidden md:block bg-white text-slate-900 font-semibold px-4 py-2 rounded-lg hover:bg-slate-200 transition-colors">
+            Sign In
+          </button>
+        )}
       </div>
     </header>
   );
@@ -77,7 +95,11 @@ const BackgroundShape: React.FC<{ className?: string }> = ({ className }) => {
     return <div className={`absolute bg-blue-500/10 w-64 h-64 rounded-lg filter blur-3xl ${className}`}></div>
 }
 
-const Hero: React.FC<{ onGetStartedClick: () => void }> = ({ onGetStartedClick }) => {
+const Hero: React.FC<{ 
+  onGetStartedClick: () => void; 
+  session: Session; 
+  onDashboardClick: () => void; 
+}> = ({ onGetStartedClick, session, onDashboardClick }) => {
   return (
     <section className="relative min-h-screen flex items-center justify-center text-center overflow-hidden pt-20">
       <BackgroundShape className="top-1/4 left-1/4 transform -translate-x-1/2 -translate-y-1/2" />
@@ -93,12 +115,21 @@ const Hero: React.FC<{ onGetStartedClick: () => void }> = ({ onGetStartedClick }
           Describe the plugin you want in plain English. Pegasus's advanced AI generates high-quality, ready-to-use Minecraft plugins in seconds.
         </p>
         <div className="mt-10 flex flex-col sm:flex-row justify-center items-center gap-4">
-          <button
-            onClick={onGetStartedClick}
-            className="w-full sm:w-auto bg-white text-slate-900 font-semibold px-8 py-3 rounded-lg hover:bg-slate-200 transition-colors transform hover:scale-105"
-          >
-            Get Started
-          </button>
+          {session ? (
+            <button
+              onClick={onDashboardClick}
+              className="w-full sm:w-auto bg-blue-600 text-white font-semibold px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors transform hover:scale-105"
+            >
+              Go to Dashboard
+            </button>
+          ) : (
+            <button
+              onClick={onGetStartedClick}
+              className="w-full sm:w-auto bg-white text-slate-900 font-semibold px-8 py-3 rounded-lg hover:bg-slate-200 transition-colors transform hover:scale-105"
+            >
+              Get Started
+            </button>
+          )}
           <a
             href="#features"
             className="w-full sm:w-auto bg-transparent border border-slate-600 text-white font-semibold px-8 py-3 rounded-lg hover:bg-slate-800 hover:border-slate-500 transition-colors transform hover:scale-105"
@@ -516,10 +547,8 @@ export default function Home() {
 
   useEffect(() => {
     if (mounted && !isPending) {
-      // Only redirect if user is actually authenticated
-      if (session) {
-        router.push('/dashboard');
-      }
+      // Landing page should ALWAYS show - no automatic redirects
+      // Users can manually navigate to dashboard via header or buttons if logged in
     }
   }, [session, isPending, router, mounted]);
 
@@ -527,15 +556,8 @@ export default function Home() {
     router.push('/auth');
   };
 
-  const handleDebugSignOut = async () => {
-    try {
-      await signOut();
-      // Also call our test logout endpoint to be sure
-      await fetch('/api/test-logout', { method: 'POST' });
-      window.location.reload(); // Force reload to clear all state
-    } catch (error) {
-      console.error('Sign out error:', error);
-    }
+  const handleDashboard = () => {
+    router.push('/dashboard');
   };
 
   // Show loading state while checking authentication
@@ -599,22 +621,14 @@ export default function Home() {
             <span>
               AUTH DEBUG: {session ? `Logged in as ${session.user?.email || session.user?.id}` : 'Not authenticated'}
             </span>
-            {session && (
-              <button 
-                onClick={handleDebugSignOut}
-                className="bg-red-800 hover:bg-red-900 px-3 py-1 rounded text-xs"
-              >
-                Debug: Sign Out
-              </button>
-            )}
           </div>
         </div>
       )}
       
       <div className="relative overflow-x-hidden bg-[#0A0F1F] text-slate-300 antialiased" style={{ marginTop: isDevelopmentMode && session ? '40px' : '0' }}>
-        <Header onSignInClick={handleSignIn} />
+        <Header onSignInClick={handleSignIn} session={session} onDashboardClick={handleDashboard} />
         <main>
-          <Hero onGetStartedClick={handleSignIn} />
+          <Hero onGetStartedClick={handleSignIn} session={session} onDashboardClick={handleDashboard} />
           <Advantage />
           <Showcase />
           <FAQ />
