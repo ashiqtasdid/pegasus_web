@@ -35,16 +35,17 @@ export async function POST(request: NextRequest) {
     }
 
     if (!prompt) {
-      return NextResponse.json(
+      return withCors(NextResponse.json(
         { success: false, error: "Prompt is required" },
         { status: 400 }
-      );
+      ));
     }
 
     // Call external API for plugin generation
     const externalApiUrl = getExternalApiUrl();
-    console.log('Calling external API:', `${externalApiUrl}/plugin/generate`);
-    console.log('Request data:', { prompt, userId: actualUserId, name: pluginName || name, autoCompile, complexity });
+    console.log('🔗 External API URL configured:', externalApiUrl);
+    console.log('🚀 Making request to:', `${externalApiUrl}/plugin/generate`);
+    console.log('📝 Request data:', { prompt, userId: actualUserId, name: pluginName || name, autoCompile, complexity });
     
     const response = await fetch(`${externalApiUrl}/plugin/generate`, {
       method: 'POST',
@@ -61,10 +62,13 @@ export async function POST(request: NextRequest) {
       })
     });
 
+    console.log('📡 External API response status:', response.status);
+    console.log('📡 External API response headers:', Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
-      console.error('External API error:', response.status, response.statusText);
+      console.error('❌ External API error:', response.status, response.statusText);
       const errorText = await response.text();
-      console.error('Error details:', errorText);
+      console.error('❌ Error details:', errorText);
       return withCors(NextResponse.json(
         { success: false, error: `Failed to generate plugin from external API: ${response.status} ${response.statusText}` },
         { status: response.status }

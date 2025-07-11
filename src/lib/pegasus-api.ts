@@ -188,7 +188,8 @@ class PegasusAPI {
   private baseUrl: string;
 
   constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_PEGASUS_API_URL || '';
+    // Always use local API routes instead of external API directly to avoid CORS
+    this.baseUrl = baseUrl || '/api';
   }
 
   private async makeRequest<T>(
@@ -197,7 +198,12 @@ class PegasusAPI {
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     
-    console.log(`Making API request to: ${url}`);
+    console.log(`🌐 Making API request to: ${url}`);
+    console.log('📋 Request options:', {
+      method: options.method || 'GET',
+      headers: options.headers,
+      body: options.body ? 'present' : 'none'
+    });
     
     const response = await fetch(url, {
       headers: {
@@ -206,6 +212,9 @@ class PegasusAPI {
       },
       ...options,
     });
+
+    console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+    console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       let errorMessage;
@@ -216,15 +225,17 @@ class PegasusAPI {
         // If response is not JSON, get text
         errorMessage = await response.text() || `HTTP ${response.status}`;
       }
+      console.error(`❌ API Error ${response.status}: ${errorMessage}`);
       throw new Error(`API Error ${response.status}: ${errorMessage}`);
     }
 
     // Ensure we can parse the JSON response
     try {
       const result = await response.json();
+      console.log('✅ API request successful');
       return result;
     } catch (parseError) {
-      console.error('Failed to parse JSON response:', parseError);
+      console.error('❌ Failed to parse JSON response:', parseError);
       throw new Error(`Invalid JSON response from ${url}: ${parseError}`);
     }
   }

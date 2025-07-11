@@ -88,7 +88,8 @@ export function usePluginGenerator() {
   const [jarInfo, setJarInfo] = useState<JarFileInfo | null>(null);
   const [jarLoading, setJarLoading] = useState(false);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
+  // Use local API routes to avoid CORS issues
+  const apiBase = '/api';
 
   useEffect(() => {
     return () => {
