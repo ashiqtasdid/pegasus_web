@@ -18,6 +18,38 @@ export function getExternalApiUrl(): string {
 }
 
 /**
+ * Get multiple possible external API URLs for failover
+ */
+export function getExternalApiUrls(): string[] {
+  const urls = [];
+  
+  // Primary URL from BACKEND_URL
+  if (process.env.BACKEND_URL) {
+    urls.push(process.env.BACKEND_URL);
+  }
+  
+  // Fallback URLs for Docker containers
+  const containerOptions = [
+    'http://combined-pegasus:3001',
+    'http://pegasus-backend:3001', 
+    'http://pegasus:3001',
+    'http://host.docker.internal:3001'
+  ];
+  
+  urls.push(...containerOptions);
+  
+  // Public URL as last resort
+  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+    urls.push(process.env.NEXT_PUBLIC_API_BASE_URL);
+  }
+  
+  urls.push('http://localhost:3001');
+  
+  // Remove duplicates
+  return [...new Set(urls)];
+}
+
+/**
  * Get the base URL for client-side API calls (points to Next.js proxy routes)
  */
 export function getClientApiUrl(): string {

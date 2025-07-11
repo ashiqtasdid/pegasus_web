@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getExternalApiUrl } from '@/lib/api-config';
+import { getExternalApiUrl, getExternalApiUrls } from '@/lib/api-config';
 import { auth } from '@/lib/auth';
 import { withCors, handleCorsPreflightRequest } from '@/lib/cors';
 
@@ -41,37 +41,62 @@ export async function POST(request: NextRequest) {
       ));
     }
 
-    // Call external API for plugin generation
-    const externalApiUrl = getExternalApiUrl();
-    console.log('🔗 External API URL configured:', externalApiUrl);
-    console.log('🚀 Making request to:', `${externalApiUrl}/plugin/generate`);
-    console.log('📝 Request data:', { prompt, userId: actualUserId, name: pluginName || name, autoCompile, complexity });
+    // Try multiple API URLs for Docker container communication
+    const apiUrls = getExternalApiUrls();
+    console.log('🔗 Available API URLs:', apiUrls);
     
-    const response = await fetch(`${externalApiUrl}/plugin/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prompt,
-        userId: actualUserId,
-        email: email || session?.user?.email,
-        name: pluginName || name,
-        autoCompile,
-        complexity
-      })
-    });
+    let lastError;
+    let response;
+    
+    for (const apiUrl of apiUrls) {
+      try {
+        console.log(`� Attempting connection to: ${apiUrl}/plugin/generate`);
+        
+        response = await fetch(`${apiUrl}/plugin/generate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt,
+            userId: actualUserId,
+            email: email || session?.user?.email,
+            name: pluginName || name,
+            autoCompile,
+            complexity
+          }),
+          signal: AbortSignal.timeout(10000) // 10 second timeout per attempt
+        });
 
-    console.log('📡 External API response status:', response.status);
-    console.log('📡 External API response headers:', Object.fromEntries(response.headers.entries()));
+        console.log(`📡 Response from ${apiUrl}: ${response.status} ${response.statusText}`);
+        
+        if (response.ok) {
+          console.log(`✅ Successfully connected to: ${apiUrl}`);
+          break; // Success! Exit the retry loop
+        } else {
+          console.log(`❌ HTTP error from ${apiUrl}: ${response.status}`);
+          lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+      } catch (error) {
+        console.log(`❌ Connection failed to ${apiUrl}:`, error instanceof Error ? error.message : error);
+        lastError = error;
+        response = null; // Reset response for next iteration
+      }
+    }
 
-    if (!response.ok) {
-      console.error('❌ External API error:', response.status, response.statusText);
-      const errorText = await response.text();
-      console.error('❌ Error details:', errorText);
+    // If all URLs failed, return the last error
+    if (!response || !response.ok) {
+      const errorMessage = lastError instanceof Error ? lastError.message : 'All API endpoints failed';
+      console.error('🚨 All external API URLs failed. Last error:', errorMessage);
+      console.error('🚨 Tried URLs:', apiUrls);
+      
       return withCors(NextResponse.json(
-        { success: false, error: `Failed to generate plugin from external API: ${response.status} ${response.statusText}` },
-        { status: response.status }
+        { 
+          success: false, 
+          error: `Unable to connect to external API. Tried: ${apiUrls.join(', ')}. Last error: ${errorMessage}` 
+        },
+        { status: 503 }
       ));
     }
 
@@ -84,9 +109,23 @@ export async function POST(request: NextRequest) {
     return withCors(NextResponse.json(apiResponse));
 
   } catch (error) {
-    console.error('Plugin generation error:', error);
+    console.error('🚨 Plugin generation error:', error);
+    console.error('🚨 Error type:', error instanceof Error ? error.constructor.name : typeof error);
+    console.error('🚨 Error message:', error instanceof Error ? error.message : String(error));
+    console.error('🚨 Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    
+    // Check if it's a network/fetch error
+    let errorMessage = 'Unknown error';
+    if (error instanceof Error) {
+      if (error.message.includes('fetch failed') || error.message.includes('ENOTFOUND') || error.message.includes('ECONNREFUSED')) {
+        errorMessage = `Unable to connect to external API at ${getExternalApiUrl()}. Please check if the API server is running and accessible.`;
+      } else {
+        errorMessage = error.message;
+      }
+    }
+    
     return withCors(NextResponse.json(
-      { success: false, error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown error'}` },
+      { success: false, error: `Internal server error: ${errorMessage}` },
       { status: 500 }
     ));
   }
