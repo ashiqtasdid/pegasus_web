@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-interface RouteParams {
-  params: {
+interface RouteContext {
+  params: Promise<{
     userId: string;
     pluginName: string;
-  };
+  }>;
 }
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
-    const { userId, pluginName } = params;
+    const { userId, pluginName } = await context.params;
     
     // Get the info query parameter to check if this is an info request
     const url = new URL(request.url);

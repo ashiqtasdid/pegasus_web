@@ -1,4 +1,4 @@
-/* eslint-disable react/no-unescaped-entities, @next/next/no-page-custom-font, @next/next/no-sync-scripts */
+/* eslint-disable @next/next/no-page-custom-font, @next/next/no-sync-scripts */
 'use client';
 
 import { useSession } from '@/lib/auth-client';
