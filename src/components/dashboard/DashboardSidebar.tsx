@@ -20,6 +20,7 @@ import { useUserPermissions } from '@/hooks/useUserManagement';
 import { useBanRedirect } from '@/hooks/useBanCheck';
 import { useToast, useKeyboardNavigation, useResponsive, useErrorHandler, useApiCall } from '@/hooks/useDashboard';
 import { useDashboardData } from '@/hooks/useDashboardData';
+import { usePluginGenerator } from '@/hooks/usePluginGenerator';
 import { CreatePluginModal } from '@/components/CreatePluginModal';
 import { TicketDashboard } from '@/components/tickets/TicketDashboard';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -201,7 +202,6 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   const [currentView, setCurrentView] = useState<ViewType>(initialView);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [hoveredMainIndex, setHoveredMainIndex] = useState<number | null>(null);
   const [hoveredResourceIndex, setHoveredResourceIndex] = useState<number | null>(null);
 
@@ -211,11 +211,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   const isDevelopmentMode = process.env.DEVELOP === 'true';
 
   // Hooks
-  const { addToast, removeToast } = useToast();
+  const { addToast } = useToast();
   const { handleError } = useErrorHandler();
   const { permissions, loading: permissionsLoading } = useUserPermissions();
   const { loading: banCheckLoading } = useBanRedirect();
   const screenSize = useResponsive();
+  const { generatePlugin, isLoading: isGenerating } = usePluginGenerator();
   
   // Enable keyboard navigation
   useKeyboardNavigation(true);
@@ -449,57 +450,31 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
       return;
     }
 
-    setIsGenerating(true);
-    let generatingToastId: string | null = null;
-    
     try {
-      generatingToastId = addToast('Generating your plugin...', 'info');
+      addToast('Generating your plugin...', 'info');
       
-      const response = await fetch('/api/plugin/generate', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'credentials': 'include',
-        },
-        body: JSON.stringify({
-          ...data,
-          userId: session?.user?.id || data.userId,
-        }),
+      // Use the plugin generator hook
+      await generatePlugin({
+        ...data,
+        userId: session?.user?.id || data.userId,
       });
-
-      if (!response.ok) {
-        if (response.status === 403) {
-          throw new Error('Please log in to generate plugins');
-        }
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate plugin');
-      }
-
-      // Remove the generating toast and show success
-      if (generatingToastId) {
-        removeToast(generatingToastId);
-      }
+      
       addToast('Plugin generated successfully!', 'success');
       
+      // Refresh data
       await Promise.all([
-        refetchPluginStats(), // Refresh stats
-        refetchProjects(), // Refresh projects list
-        refetchTokenUsage() // Refresh token usage
+        refetchPluginStats(),
+        refetchProjects(),
+        refetchTokenUsage()
       ]);
+      
       setShowCreateModal(false);
     } catch (error) {
-      // Remove the generating toast and show error
-      if (generatingToastId) {
-        removeToast(generatingToastId);
-      }
-      
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate plugin';
       addToast(errorMessage, 'error');
       handleError(error instanceof Error ? error : new Error(errorMessage), 'Plugin Generation');
-    } finally {
-      setIsGenerating(false);
     }
-  }, [addToast, removeToast, handleError, refetchPluginStats, refetchProjects, refetchTokenUsage, isAuthenticated, isDevelopmentMode, session, tokenUsageData]);
+  }, [addToast, handleError, generatePlugin, refetchPluginStats, refetchProjects, refetchTokenUsage, isAuthenticated, isDevelopmentMode, session, tokenUsageData]);
 
   // Handle search
   const handleSearch = useCallback((searchValue: string) => {

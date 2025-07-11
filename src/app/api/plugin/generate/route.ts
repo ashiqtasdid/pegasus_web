@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getExternalApiUrl } from '@/lib/api-config';
 import { auth } from '@/lib/auth';
+import { withCors, handleCorsPreflightRequest } from '@/lib/cors';
+
+export async function OPTIONS() {
+  return handleCorsPreflightRequest();
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +18,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!isDevelopmentMode && !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return withCors(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
     }
 
     const body = await request.json();
@@ -24,9 +29,9 @@ export async function POST(request: NextRequest) {
     const actualUserId = isDevelopmentMode ? (userId || sessionUserId) : sessionUserId;
     
     if (!isDevelopmentMode && userId && userId !== sessionUserId) {
-      return NextResponse.json({ 
+      return withCors(NextResponse.json({ 
         error: 'Access denied: You can only generate plugins for your own account' 
-      }, { status: 403 });
+      }, { status: 403 }));
     }
 
     if (!prompt) {
@@ -60,10 +65,10 @@ export async function POST(request: NextRequest) {
       console.error('External API error:', response.status, response.statusText);
       const errorText = await response.text();
       console.error('Error details:', errorText);
-      return NextResponse.json(
+      return withCors(NextResponse.json(
         { success: false, error: `Failed to generate plugin from external API: ${response.status} ${response.statusText}` },
         { status: response.status }
-      );
+      ));
     }
 
     // Parse JSON response from external API which should include both result and tokenUsage
@@ -72,13 +77,13 @@ export async function POST(request: NextRequest) {
     console.log('API Response keys:', Object.keys(apiResponse));
     
     // Return the complete response including token usage analytics
-    return NextResponse.json(apiResponse);
+    return withCors(NextResponse.json(apiResponse));
 
   } catch (error) {
     console.error('Plugin generation error:', error);
-    return NextResponse.json(
+    return withCors(NextResponse.json(
       { success: false, error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
-    );
+    ));
   }
 }

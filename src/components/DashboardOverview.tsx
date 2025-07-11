@@ -99,7 +99,7 @@ interface PluginStats {
 export function DashboardOverview() {
   const router = useRouter();
   const { data: session } = useSession();
-  const { generatePlugin } = usePluginGenerator();
+  const { generatePlugin, isLoading: isGenerating } = usePluginGenerator();
   const [plugins, setPlugins] = useState<Plugin[]>([]);
   const [stats, setStats] = useState<PluginStats | null>(null);
   const [tokenUsage, setTokenUsage] = useState<{
@@ -839,6 +839,7 @@ export function DashboardOverview() {
         open={createModalOpen}
         onOpenChange={setCreateModalOpen}
         onCreatePlugin={handleCreatePlugin}
+        isLoading={isGenerating}
         userId={currentUserId}
       />
     </div>

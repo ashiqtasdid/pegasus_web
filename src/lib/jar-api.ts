@@ -42,12 +42,28 @@ export interface Plugin {
 export async function getJarInfo(userId: string, pluginName: string): Promise<JarFileInfo> {
   const url = `${API_BASE_URL}/download?userId=${encodeURIComponent(userId)}&pluginName=${encodeURIComponent(pluginName)}&info=true`;
   
-  const response = await fetch(url);
+  console.log(`Fetching JAR info from: ${url}`);
+  
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+    },
+  });
+  
   if (!response.ok) {
-    throw new Error(`Failed to get JAR info: HTTP ${response.status}`);
+    const errorText = await response.text();
+    console.error(`Failed to get JAR info: HTTP ${response.status} - ${errorText}`);
+    throw new Error(`Failed to get JAR info: HTTP ${response.status} - ${errorText}`);
   }
   
-  return response.json();
+  try {
+    const result = await response.json();
+    return result;
+  } catch (parseError) {
+    console.error('Failed to parse JAR info JSON response:', parseError);
+    throw new Error(`Invalid JSON response from JAR info API: ${parseError}`);
+  }
 }
 
 /**
@@ -69,9 +85,19 @@ export async function checkJarExists(userId: string, pluginName: string): Promis
 export async function downloadJar(userId: string, pluginName: string): Promise<Blob> {
   const url = `${API_BASE_URL}/download?userId=${encodeURIComponent(userId)}&pluginName=${encodeURIComponent(pluginName)}`;
   
-  const response = await fetch(url);
+  console.log(`Downloading JAR from: ${url}`);
+  
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/octet-stream, application/java-archive, */*',
+    },
+  });
+  
   if (!response.ok) {
-    throw new Error(`Failed to download JAR: HTTP ${response.status}`);
+    const errorText = await response.text();
+    console.error(`Failed to download JAR: HTTP ${response.status} - ${errorText}`);
+    throw new Error(`Failed to download JAR: HTTP ${response.status} - ${errorText}`);
   }
   
   return response.blob();

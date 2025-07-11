@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MongoClient } from 'mongodb';
 import { auth } from '@/lib/auth';
+import { withCors, handleCorsPreflightRequest } from '@/lib/cors';
 
 const MONGODB_URI = process.env.MONGODB_URI!;
+
+export async function OPTIONS() {
+  return handleCorsPreflightRequest();
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,17 +20,17 @@ export async function POST(request: NextRequest) {
     });
 
     if (!isDevelopmentMode && !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return withCors(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
     }
 
     const body = await request.json();
     const { userId, pluginName } = body;
 
     if (!userId || !pluginName) {
-      return NextResponse.json({
+      return withCors(NextResponse.json({
         success: false,
         error: 'userId and pluginName are required'
-      }, { status: 400 });
+      }, { status: 400 }));
     }
 
     // Security check: ensure user can only access their own files (unless in development mode)
@@ -62,7 +67,7 @@ export async function POST(request: NextRequest) {
           files[file.path] = file.content;
         });
         
-        return NextResponse.json({
+        return withCors(NextResponse.json({
           success: true,
           files,
           metadata: {
@@ -74,29 +79,29 @@ export async function POST(request: NextRequest) {
             lastSyncedAt: plugin.metadata?.lastSyncedAt,
             updatedAt: plugin.updatedAt
           }
-        });
+        }));
       } else {
         console.log('Plugin not found in MongoDB or has no files');
-        return NextResponse.json({
+        return withCors(NextResponse.json({
           success: false,
           error: 'Plugin not found in MongoDB'
-        }, { status: 404 });
+        }, { status: 404 }));
       }
     } catch (dbError) {
       console.error('MongoDB error:', dbError);
-      return NextResponse.json({
+      return withCors(NextResponse.json({
         success: false,
         error: 'Database error occurred'
-      }, { status: 500 });
+      }, { status: 500 }));
     } finally {
       await client.close();
     }
 
   } catch (error) {
     console.error('Plugin files API error:', error);
-    return NextResponse.json({
+    return withCors(NextResponse.json({
       success: false,
       error: 'Internal server error'
-    }, { status: 500 });
+    }, { status: 500 }));
   }
 }

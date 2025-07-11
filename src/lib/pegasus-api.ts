@@ -197,6 +197,8 @@ class PegasusAPI {
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     
+    console.log(`Making API request to: ${url}`);
+    
     const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
@@ -206,11 +208,25 @@ class PegasusAPI {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`API Error ${response.status}: ${error}`);
+      let errorMessage;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || `HTTP ${response.status}`;
+      } catch {
+        // If response is not JSON, get text
+        errorMessage = await response.text() || `HTTP ${response.status}`;
+      }
+      throw new Error(`API Error ${response.status}: ${errorMessage}`);
     }
 
-    return response.json();
+    // Ensure we can parse the JSON response
+    try {
+      const result = await response.json();
+      return result;
+    } catch (parseError) {
+      console.error('Failed to parse JSON response:', parseError);
+      throw new Error(`Invalid JSON response from ${url}: ${parseError}`);
+    }
   }
 
   // Plugin Generation APIs
