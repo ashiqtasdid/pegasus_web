@@ -402,9 +402,14 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
     setIsChatLoading(true);
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
-      console.log('🔵 Sending request to:', `${apiBase}/chat/message`);
-        const response = await fetch(`${apiBase}/chat/message`, {
+      const chatApiUrl = '/api/chat/message';
+      console.log('🔵 Chat API URL:', chatApiUrl);
+      console.log('🔵 Environment check:', {
+        NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
+        NODE_ENV: process.env.NODE_ENV
+      });
+      console.log('🔵 Sending request to:', chatApiUrl);
+        const response = await fetch(chatApiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

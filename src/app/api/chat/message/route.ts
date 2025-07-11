@@ -30,9 +30,16 @@ export async function POST(request: NextRequest) {
 
     // Check if external backend is configured
     const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+    console.log('🔍 API Base URL:', apiBase);
+    console.log('🔍 Environment variables:', {
+      NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
+      NODE_ENV: process.env.NODE_ENV,
+      DEVELOP: process.env.DEVELOP
+    });
     
     if (apiBase && !apiBase.includes('your-backend-service')) {
       // Try to forward to external backend
+      console.log('🔄 Forwarding to external backend:', `${apiBase}/chat/message`);
       try {        const response = await fetch(`${apiBase}/chat/message`, {
           method: 'POST',
           headers: {
