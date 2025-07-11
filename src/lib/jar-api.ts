@@ -1,8 +1,8 @@
 // Unified External Download API
-// Uses the external VPS filesystem-based download endpoint
+// Uses the local API proxy to avoid CORS issues
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
-console.log('External API Base URL:', API_BASE_URL);
+const API_BASE_URL = '/api/plugin';
+console.log('Using local API proxy for downloads');
 
 export interface JarFileInfo {
   available: boolean;
@@ -37,10 +37,10 @@ export interface Plugin {
 // Unified External API Download Functions
 
 /**
- * Check JAR availability using external API
+ * Check JAR availability using local API proxy
  */
 export async function getJarInfo(userId: string, pluginName: string): Promise<JarFileInfo> {
-  const url = `${API_BASE_URL}/download?userId=${encodeURIComponent(userId)}&pluginName=${encodeURIComponent(pluginName)}&info=true`;
+  const url = `${API_BASE_URL}/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}?info=true`;
   
   console.log(`Fetching JAR info from: ${url}`);
   
@@ -67,7 +67,7 @@ export async function getJarInfo(userId: string, pluginName: string): Promise<Ja
 }
 
 /**
- * Check if JAR exists using external API
+ * Check if JAR exists using local API proxy
  */
 export async function checkJarExists(userId: string, pluginName: string): Promise<boolean> {
   try {
@@ -80,10 +80,10 @@ export async function checkJarExists(userId: string, pluginName: string): Promis
 }
 
 /**
- * Download JAR using external API
+ * Download JAR using local API proxy
  */
 export async function downloadJar(userId: string, pluginName: string): Promise<Blob> {
-  const url = `${API_BASE_URL}/download?userId=${encodeURIComponent(userId)}&pluginName=${encodeURIComponent(pluginName)}`;
+  const url = `${API_BASE_URL}/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`;
   
   console.log(`Downloading JAR from: ${url}`);
   
@@ -117,7 +117,7 @@ export async function getJarInfoWithFallback(userId: string, pluginName: string)
       fileName: `${pluginName}.jar`,
       fileSize: 0,
       lastModified: new Date().toISOString(),
-      downloadUrl: `${API_BASE_URL}/download?userId=${encodeURIComponent(userId)}&pluginName=${encodeURIComponent(pluginName)}`,
+      downloadUrl: `${API_BASE_URL}/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`,
       metadata: {
         version: '1.0.0',
         author: 'Unknown',
@@ -149,7 +149,7 @@ export async function getMultipleJarInfos(userId: string, pluginNames: string[])
         fileName: `${pluginName}.jar`,
         fileSize: 0,
         lastModified: new Date().toISOString(),
-        downloadUrl: `${API_BASE_URL}/download?userId=${encodeURIComponent(userId)}&pluginName=${encodeURIComponent(pluginName)}`,
+        downloadUrl: `${API_BASE_URL}/download/${encodeURIComponent(userId)}/${encodeURIComponent(pluginName)}`,
         metadata: {
           version: '1.0.0',
           author: 'Unknown',

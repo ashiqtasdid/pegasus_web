@@ -9,6 +9,7 @@ import Head from 'next/head';
 import Image from 'next/image';
 import { motion, useInView } from 'motion/react';
 import { useRef } from 'react';
+import ComparisonTable from '@/components/ComparisonTable';
 
 // Type for session
 type Session = {
@@ -82,7 +83,7 @@ const Header: React.FC<{
           whileHover={{ color: "#60A5FA" }}
           transition={{ duration: 0.2 }}
         >
-          <h1>Pegasus AI</h1>
+          <h1>Moonlit AI</h1>
         </motion.div>
         <ul className="hidden md:flex items-center space-x-8" role="list">
           <motion.li whileHover={{ scale: 1.05 }} transition={{ duration: 0.2 }}>
@@ -107,12 +108,12 @@ const Header: React.FC<{
           </motion.li>
           <motion.li whileHover={{ scale: 1.05 }} transition={{ duration: 0.2 }}>
             <motion.a 
-              href="#reviews" 
+              href="#comparison" 
               className="text-slate-300" 
-              aria-label="Customer reviews"
+              aria-label="Product comparison"
               whileHover={{ color: "#FFFFFF" }}
             >
-              Reviews
+              Comparison
             </motion.a>
           </motion.li>
           <motion.li whileHover={{ scale: 1.05 }} transition={{ duration: 0.2 }}>
@@ -515,103 +516,6 @@ const Hero: React.FC<{
   );
 };
 
-// Advantage Component
-const Advantage: React.FC = () => {
-  const features = [
-    { name: 'AI-Powered Natural Language Processing', pegasus: true, manual: false },
-    { name: 'Instant Plugin Generation (Under 30 Seconds)', pegasus: true, manual: false },
-    { name: 'Spigot, Paper & Bukkit Compatibility', pegasus: true, manual: false },
-    { name: 'Zero Setup - No IDE or Dependencies', pegasus: true, manual: false },
-    { name: 'Automatic Code Optimization & Security', pegasus: true, manual: false },
-    { name: 'One-Click Server Deployment', pegasus: true, manual: false },
-  ];
-
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, amount: 0.2 });
-
-  return (
-    <motion.section 
-      id="features" 
-      className="py-20 sm:py-32"
-      ref={ref}
-      initial={{ opacity: 0 }}
-      animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-      transition={{ duration: 0.6 }}
-    >
-      <div className="container mx-auto px-6">
-        <div className="max-w-3xl mx-auto text-center">
-          <motion.h2 
-            className="text-4xl md:text-5xl font-extrabold text-white"
-            initial={{ y: 50, opacity: 0 }}
-            animate={isInView ? { y: 0, opacity: 1 } : { y: 50, opacity: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-          >
-            Why Choose Pegasus AI Over Manual Development?
-          </motion.h2>
-          <motion.p 
-            className="mt-4 text-lg text-slate-300"
-            initial={{ y: 30, opacity: 0 }}
-            animate={isInView ? { y: 0, opacity: 1 } : { y: 30, opacity: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-          >
-            Our advanced AI architecture eliminates the complexity of traditional Minecraft plugin development, delivering enterprise-grade solutions in seconds instead of weeks.
-          </motion.p>
-        </div>
-
-        <motion.div 
-          className="mt-16 max-w-4xl mx-auto"
-          initial={{ y: 60, opacity: 0 }}
-          animate={isInView ? { y: 0, opacity: 1 } : { y: 60, opacity: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
-        >
-          <motion.div 
-            className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden backdrop-blur-sm"
-            whileHover={{ backgroundColor: "rgba(30, 41, 59, 0.7)" }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="grid grid-cols-3 text-left font-semibold text-white px-6 py-4 border-b border-slate-700">
-              <div>Feature</div>
-              <div className="text-center">Pegasus</div>
-              <div className="text-center">Manual Coding</div>
-            </div>
-            
-            <div className="divide-y divide-slate-700">
-              {features.map((feature, index) => (
-                <motion.div 
-                  key={index} 
-                  className="grid grid-cols-3 items-center px-6 py-5"
-                  initial={{ x: 50, opacity: 0 }}
-                  animate={isInView ? { x: 0, opacity: 1 } : { x: 50, opacity: 0 }}
-                  transition={{ duration: 0.6, delay: 0.8 + index * 0.1 }}
-                  whileHover={{ backgroundColor: "rgba(51, 65, 85, 0.3)" }}
-                >
-                  <div className="font-medium text-slate-200">{feature.name}</div>
-                  <div className="flex justify-center">
-                    <motion.div
-                      whileHover={{ scale: 1.1 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      {feature.pegasus ? <Icon type="check" /> : <Icon type="cross" />}
-                    </motion.div>
-                  </div>
-                  <div className="flex justify-center">
-                    <motion.div
-                      whileHover={{ scale: 1.1 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      {feature.manual ? <Icon type="check" /> : <Icon type="cross" />}
-                    </motion.div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        </motion.div>
-      </div>
-    </motion.section>
-  );
-};
-
 // Showcase Component
 const Showcase: React.FC = () => {
   type ShowcaseTab = 'simple' | 'custom' | 'complex';
@@ -623,7 +527,7 @@ const Showcase: React.FC = () => {
       code: `# User Request:
 > "Create a plugin that gives players a diamond when they type /gift"
 
-# Pegasus AI Processing...
+# Moonlit AI Processing...
 # ✅ Generated in 8.2 seconds
 
 # Generated plugin.yml:
@@ -658,7 +562,7 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
       code: `# User Request:
 > "Create a custom sword named 'Zeus's Bolt' that strikes lightning when it hits enemies"
 
-# Pegasus AI Processing...
+# Moonlit AI Processing...
 # ✅ Generated in 12.7 seconds
 
 # Generated advanced weapon system:
@@ -697,7 +601,7 @@ public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
       code: `# User Request:
 > "Create a capture the flag game mode with teams, flags, and scoring system"
 
-# Pegasus AI Processing...
+# Moonlit AI Processing...
 # ✅ Generated in 24.1 seconds
 
 # Generated complete game system:
@@ -815,7 +719,7 @@ public class CaptureTheFlagGame extends JavaPlugin {
             animate={isInView ? { y: 0, opacity: 1 } : { y: 50, opacity: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            See Pegasus AI in Action
+            See Moonlit AI in Action
           </motion.h2>
           <motion.p 
             className="mt-4 text-lg text-slate-300"
@@ -915,6 +819,7 @@ public class CaptureTheFlagGame extends JavaPlugin {
                     <motion.span 
                       className="inline-block w-2 h-5 bg-gradient-to-t from-green-400 to-emerald-300 align-middle ml-1 shadow-lg shadow-green-400/50"
                       style={{ verticalAlign: 'middle' }}
+                      aria-hidden="true"
                       animate={{ opacity: [0, 1, 0] }}
                       transition={{ duration: 0.8, repeat: Infinity }}
                     />
@@ -960,8 +865,8 @@ public class CaptureTheFlagGame extends JavaPlugin {
 const FAQ: React.FC = () => {
   const faqData = [
     {
-      question: 'What is Pegasus AI and how does it work?',
-      answer: "Pegasus AI is an advanced machine learning platform specifically trained on Minecraft plugin development. It uses natural language processing to understand your plugin requirements and generates production-ready Java code compatible with Spigot, Paper, and Bukkit servers. Simply describe your plugin idea in plain English, and our AI handles the complex coding, optimization, and security implementation."
+      question: 'What is Moonlit AI and how does it work?',
+      answer: "Moonlit AI is an advanced machine learning platform specifically trained on Minecraft plugin development. It uses natural language processing to understand your plugin requirements and generates production-ready Java code compatible with Spigot, Paper, and Bukkit servers. Simply describe your plugin idea in plain English, and our AI handles the complex coding, optimization, and security implementation."
     },
     {
       question: 'How does the AI generate high-quality Minecraft plugins?',
@@ -969,19 +874,19 @@ const FAQ: React.FC = () => {
     },
     {
       question: 'Which Minecraft versions and server software are supported?',
-      answer: "Pegasus AI generates plugins compatible with Minecraft versions 1.16 through 1.20+, supporting Spigot, Paper, Purpur, and other Bukkit-based server software. Our AI automatically selects the appropriate API methods and ensures backward compatibility when possible. We continuously update our training data to support the latest Minecraft releases."
+      answer: "Moonlit AI generates plugins compatible with Minecraft versions 1.16 through 1.20+, supporting Spigot, Paper, Purpur, and other Bukkit-based server software. Our AI automatically selects the appropriate API methods and ensures backward compatibility when possible. We continuously update our training data to support the latest Minecraft releases."
     },
     {
       question: 'Do I need programming knowledge to create plugins with Pegasus?',
-      answer: "Absolutely not! Pegasus AI is designed for everyone - from server owners with zero coding experience to experienced developers looking to accelerate their workflow. Simply describe your plugin functionality in natural language, and our AI handles all the technical implementation. However, basic Minecraft server administration knowledge is helpful for plugin deployment."
+      answer: "Absolutely not! Moonlit AI is designed for everyone - from server owners with zero coding experience to experienced developers looking to accelerate their workflow. Simply describe your plugin functionality in natural language, and our AI handles all the technical implementation. However, basic Minecraft server administration knowledge is helpful for plugin deployment."
     },
     {
       question: 'Can I modify and customize the generated plugin code?',
-      answer: "Yes! Every plugin generated by Pegasus AI comes with full source code access. You receive well-organized, commented Java files that you can modify, extend, or integrate with existing systems. Our code follows standard Java conventions, making it easy for developers to understand and customize according to their specific needs."
+      answer: "Yes! Every plugin generated by Moonlit AI comes with full source code access. You receive well-organized, commented Java files that you can modify, extend, or integrate with existing systems. Our code follows standard Java conventions, making it easy for developers to understand and customize according to their specific needs."
     },
     {
       question: 'What does the free tier include and how does pricing work?',
-      answer: "Our free tier includes 100,000 AI tokens, enough to generate 15-25 medium-complexity plugins. This lets you fully evaluate Pegasus AI's capabilities before upgrading. Our Pro plan offers unlimited plugin generation, priority support, advanced customization options, and early access to new features. Enterprise plans include custom training and dedicated support."
+      answer: "Our free tier includes 100,000 AI tokens, enough to generate 15-25 medium-complexity plugins. This lets you fully evaluate Moonlit AI's capabilities before upgrading. Our Pro plan offers unlimited plugin generation, priority support, advanced customization options, and early access to new features. Enterprise plans include custom training and dedicated support."
     },
     {
       question: 'How secure and reliable are the generated plugins?',
@@ -1100,7 +1005,7 @@ const FAQ: React.FC = () => {
             animate={isInView ? { y: 0, opacity: 1 } : { y: 30, opacity: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
-            Everything you need to know about Pegasus AI, plugin generation, and getting started with AI-powered Minecraft development.
+            Everything you need to know about Moonlit AI, plugin generation, and getting started with AI-powered Minecraft development.
           </motion.p>
         </div>
 
@@ -1121,155 +1026,6 @@ const FAQ: React.FC = () => {
             />
           ))}
         </motion.div>
-      </div>
-    </motion.section>
-  );
-};
-
-// Reviews Component
-const Reviews: React.FC = () => {
-  const reviews = [
-    {
-      name: 'Alex Chen',
-      title: 'Lead Developer, HyperCraft Network',
-      avatar: 'https://i.pravatar.cc/40?u=alex',
-      text: "Pegasus AI has revolutionized our plugin development workflow. What used to take our team weeks now happens in minutes. The generated code quality is exceptional - clean, secure, and production-ready. It's like having a senior Minecraft developer on demand."
-    },
-    {
-      name: 'Jordan Martinez',
-      title: 'Content Creator & Server Owner',
-      avatar: 'https://i.pravatar.cc/40?u=jordan',
-      text: "As someone who creates Minecraft content but isn't a programmer, Pegasus has been a game-changer. I can now bring my wildest plugin ideas to life without learning Java. The AI understands exactly what I want and delivers flawless results every time."
-    },
-    {
-      name: 'Sarah Thompson',
-      title: 'CTO, CloudCraft Hosting',
-      avatar: 'https://i.pravatar.cc/40?u=sarah',
-      text: "We recommend Pegasus AI to all our hosting customers. The plugins it generates are stable, well-optimized, and follow security best practices. It's dramatically lowered the barrier to entry for creating unique server experiences. Absolutely essential for modern Minecraft development."
-    },
-  ];
-
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, amount: 0.2 });
-
-  const StarRating: React.FC = () => (
-      <div className="flex items-center space-x-1">
-          {[...Array(5)].map((_, i) => (
-            <motion.div 
-              key={i}
-              whileHover={{ scale: 1.1 }}
-              transition={{ duration: 0.2 }}
-            >
-              <Icon type="star" />
-            </motion.div>
-          ))}
-      </div>
-  )
-
-  return (
-    <motion.section 
-      id="reviews" 
-      className="py-20 sm:py-32 bg-[#0A0F1F]"
-      ref={ref}
-      initial={{ opacity: 0 }}
-      animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-      transition={{ duration: 0.6 }}
-    >
-      <div className="container mx-auto px-6">
-        <div className="max-w-3xl mx-auto text-center">
-          <motion.h2 
-            className="text-4xl md:text-5xl font-extrabold text-white"
-            initial={{ y: 50, opacity: 0 }}
-            animate={isInView ? { y: 0, opacity: 1 } : { y: 50, opacity: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-          >
-            Trusted by Leading Minecraft Developers
-          </motion.h2>
-          <motion.p 
-            className="mt-4 text-lg text-slate-300"
-            initial={{ y: 30, opacity: 0 }}
-            animate={isInView ? { y: 0, opacity: 1 } : { y: 30, opacity: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-          >
-            Join thousands of developers, server owners, and content creators who trust Pegasus AI for their Minecraft plugin development needs.
-          </motion.p>
-        </div>
-
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
-          {reviews.map((review, index) => (
-            <motion.div 
-              key={index} 
-              className="group bg-gradient-to-br from-slate-800/60 to-slate-900/40 p-8 rounded-2xl border border-slate-700 flex flex-col backdrop-blur-sm card-hover relative overflow-hidden"
-              initial={{ y: 60, opacity: 0 }}
-              animate={isInView ? { y: 0, opacity: 1 } : { y: 60, opacity: 0 }}
-              transition={{ duration: 0.8, delay: 0.6 + index * 0.2 }}
-              whileHover={{ 
-                scale: 1.05,
-                borderColor: "#475569",
-                boxShadow: "0 25px 50px rgba(59, 130, 246, 0.1)",
-                background: "linear-gradient(135deg, rgba(51, 65, 85, 0.6) 0%, rgba(30, 41, 59, 0.4) 100%)",
-                transition: { duration: 0.3 }
-              }}
-            >
-              {/* Subtle gradient overlay */}
-              <motion.div 
-                className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 pointer-events-none"
-                initial={{ opacity: 0 }}
-                whileHover={{ opacity: 1 }}
-                transition={{ duration: 0.5 }}
-              />
-              
-              <div className="relative z-10">
-                <StarRating />
-                <motion.p 
-                  className="mt-6 text-slate-300 flex-grow leading-relaxed"
-                  initial={{ opacity: 0.8 }}
-                  whileHover={{ opacity: 1 }}
-                >
-                  "{review.text}"
-                </motion.p>
-                <div className="mt-6 flex items-center">
-                  <div className="relative">
-                    <motion.div
-                      whileHover={{ scale: 1.1 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <Image 
-                        src={review.avatar} 
-                        alt={`Profile photo of ${review.name}, ${review.title}`} 
-                        width={48} 
-                        height={48} 
-                        className="rounded-full ring-2 ring-slate-600" 
-                      />
-                    </motion.div>
-                    <motion.div 
-                      className="absolute inset-0 rounded-full bg-gradient-to-tr from-blue-500/20 to-purple-500/20"
-                      initial={{ opacity: 0 }}
-                      whileHover={{ opacity: 1 }}
-                      transition={{ duration: 0.3 }}
-                    />
-                  </div>
-                  <div className="ml-4">
-                    <motion.div 
-                      className="font-semibold text-white"
-                      whileHover={{ color: "#dbeafe" }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      {review.name}
-                    </motion.div>
-                    <motion.div 
-                      className="text-slate-400 text-sm"
-                      whileHover={{ color: "#cbd5e1" }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      {review.title}
-                    </motion.div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
       </div>
     </motion.section>
   );
@@ -1320,7 +1076,7 @@ const Waitlist: React.FC<{ onSignInClick: () => void }> = ({ onSignInClick }) =>
             animate={isInView ? { y: 0, opacity: 1 } : { y: 30, opacity: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
-            Join over 15,000 developers already using Pegasus AI to transform their Minecraft servers. Get started with 100,000 free tokens - no credit card required.
+            Join over 15,000 developers already using Moonlit AI to transform their Minecraft servers. Get started with 100,000 free tokens - no credit card required.
           </motion.p>
 
           <motion.div 
@@ -1498,7 +1254,7 @@ const Footer: React.FC = () => {
               whileHover={{ color: "#60a5fa" }}
               transition={{ duration: 0.3 }}
             >
-              Pegasus AI
+              Moonlit AI
             </motion.h3>
             <p className="mt-2 text-slate-400 text-sm">AI-powered Minecraft plugin generator for developers and server owners worldwide.</p>
           </motion.div>
@@ -1567,7 +1323,7 @@ const Footer: React.FC = () => {
                   <motion.a 
                     href="/about" 
                     className="text-slate-400" 
-                    aria-label="About Pegasus AI"
+                    aria-label="About Moonlit AI"
                     variants={linkVariants}
                     whileHover="hover"
                   >
@@ -1678,7 +1434,7 @@ const Footer: React.FC = () => {
         transition={{ duration: 0.6, delay: 0.7 }}
       >
         <p className="text-slate-400">
-          © 2024 Pegasus AI, Inc. All rights reserved. | 
+          © 2024 Moonlit AI, Inc. All rights reserved. | 
           <motion.a 
             href="/privacy" 
             className="hover:text-white transition-colors ml-1"
@@ -1795,20 +1551,20 @@ export default function Home() {
     <>
       <Head>
         {/* Primary Meta Tags */}
-        <title>Pegasus AI - Generate Minecraft Plugins Instantly with AI | No Code Required</title>
-        <meta name="title" content="Pegasus AI - Generate Minecraft Plugins Instantly with AI | No Code Required" />
+        <title>Moonlit AI - Generate Minecraft Plugins Instantly with AI | No Code Required</title>
+        <meta name="title" content="Moonlit AI - Generate Minecraft Plugins Instantly with AI | No Code Required" />
         <meta name="description" content="Create professional Minecraft plugins in seconds using AI. Just describe your plugin in plain English and get production-ready Spigot, Paper & Bukkit plugins instantly. Free 100K tokens to start." />
         <meta name="keywords" content="minecraft plugins, ai plugin generator, spigot plugins, paper plugins, bukkit plugins, minecraft server, plugin development, no code minecraft, ai coding, minecraft automation, java plugin generator, minecraft ai tools, server management, bukkit development, spigot api, minecraft modding, game server plugins, artificial intelligence minecraft" />
         <meta name="robots" content="index, follow" />
         <meta name="language" content="English" />
-        <meta name="author" content="Pegasus AI" />
+        <meta name="author" content="Moonlit AI" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         
         {/* Additional Technical SEO */}
         <meta name="theme-color" content="#3b82f6" />
         <meta name="msapplication-TileColor" content="#0A0F1F" />
-        <meta name="application-name" content="Pegasus AI" />
-        <meta name="apple-mobile-web-app-title" content="Pegasus AI" />
+        <meta name="application-name" content="Moonlit AI" />
+        <meta name="apple-mobile-web-app-title" content="Moonlit AI" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="format-detection" content="telephone=no" />
@@ -1823,24 +1579,24 @@ export default function Home() {
         
         {/* OpenGraph Extended */}
         <meta property="og:locale" content="en_US" />
-        <meta property="og:image:alt" content="Pegasus AI - AI-powered Minecraft plugin generator interface" />
-        <meta property="article:author" content="Pegasus AI" />
+        <meta property="og:image:alt" content="Moonlit AI - AI-powered Minecraft plugin generator interface" />
+        <meta property="article:author" content="Moonlit AI" />
         <meta property="article:publisher" content="https://pegasus.ai" />
         
         {/* Open Graph / Facebook */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://pegasus.ai/" />
-        <meta property="og:title" content="Pegasus AI - Generate Minecraft Plugins Instantly with AI" />
+        <meta property="og:title" content="Moonlit AI - Generate Minecraft Plugins Instantly with AI" />
         <meta property="og:description" content="Create professional Minecraft plugins in seconds using AI. Just describe your plugin in plain English and get production-ready code instantly." />
         <meta property="og:image" content="https://pegasus.ai/og-image.jpg" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:site_name" content="Pegasus AI" />
+        <meta property="og:site_name" content="Moonlit AI" />
         
         {/* Twitter */}
         <meta property="twitter:card" content="summary_large_image" />
         <meta property="twitter:url" content="https://pegasus.ai/" />
-        <meta property="twitter:title" content="Pegasus AI - Generate Minecraft Plugins Instantly with AI" />
+        <meta property="twitter:title" content="Moonlit AI - Generate Minecraft Plugins Instantly with AI" />
         <meta property="twitter:description" content="Create professional Minecraft plugins in seconds using AI. Just describe your plugin in plain English and get production-ready code instantly." />
         <meta property="twitter:image" content="https://pegasus.ai/twitter-image.jpg" />
         <meta property="twitter:creator" content="@PegasusAI" />
@@ -1860,8 +1616,8 @@ export default function Home() {
         <meta name="google-site-verification" content="pegasus-ai-verification-code" />
         
         {/* Additional SEO Links */}
-        <link rel="alternate" type="application/rss+xml" title="Pegasus AI Blog" href="/blog/rss.xml" />
-        <link rel="search" type="application/opensearchdescription+xml" title="Pegasus AI Search" href="/opensearch.xml" />
+        <link rel="alternate" type="application/rss+xml" title="Moonlit AI Blog" href="/blog/rss.xml" />
+        <link rel="search" type="application/opensearchdescription+xml" title="Moonlit AI Search" href="/opensearch.xml" />
         
         {/* Structured Data - Organization */}
         <script
@@ -1870,7 +1626,7 @@ export default function Home() {
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "Organization",
-              "name": "Pegasus AI",
+              "name": "Moonlit AI",
               "url": "https://pegasus.ai",
               "logo": "https://pegasus.ai/logo.png",
               "description": "AI-powered Minecraft plugin generator that creates professional plugins instantly from natural language descriptions.",
@@ -1891,7 +1647,7 @@ export default function Home() {
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebApplication",
-              "name": "Pegasus AI",
+              "name": "Moonlit AI",
               "url": "https://pegasus.ai",
               "description": "AI-powered Minecraft plugin generator that creates professional plugins instantly from natural language descriptions.",
               "applicationCategory": "DeveloperApplication",
@@ -1922,11 +1678,11 @@ export default function Home() {
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "Product",
-              "name": "Pegasus AI Plugin Generator",
+              "name": "Moonlit AI Plugin Generator",
               "description": "AI-powered tool that generates professional Minecraft plugins from natural language descriptions in seconds.",
               "brand": {
                 "@type": "Brand",
-                "name": "Pegasus AI"
+                "name": "Moonlit AI"
               },
               "offers": {
                 "@type": "Offer",
@@ -1956,10 +1712,10 @@ export default function Home() {
               "mainEntity": [
                 {
                   "@type": "Question",
-                  "name": "What is Pegasus AI and how does it work?",
+                  "name": "What is Moonlit AI and how does it work?",
                   "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "Pegasus AI is an advanced machine learning platform specifically trained on Minecraft plugin development. It uses natural language processing to understand your plugin requirements and generates production-ready Java code compatible with Spigot, Paper, and Bukkit servers."
+                    "text": "Moonlit AI is an advanced machine learning platform specifically trained on Minecraft plugin development. It uses natural language processing to understand your plugin requirements and generates production-ready Java code compatible with Spigot, Paper, and Bukkit servers."
                   }
                 },
                 {
@@ -1967,7 +1723,7 @@ export default function Home() {
                   "name": "Do I need programming knowledge to create plugins with Pegasus?",
                   "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "Absolutely not! Pegasus AI is designed for everyone - from server owners with zero coding experience to experienced developers looking to accelerate their workflow. Simply describe your plugin functionality in natural language."
+                    "text": "Absolutely not! Moonlit AI is designed for everyone - from server owners with zero coding experience to experienced developers looking to accelerate their workflow. Simply describe your plugin functionality in natural language."
                   }
                 },
                 {
@@ -1975,7 +1731,7 @@ export default function Home() {
                   "name": "Which Minecraft versions and server software are supported?",
                   "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "Pegasus AI generates plugins compatible with Minecraft versions 1.16 through 1.20+, supporting Spigot, Paper, Purpur, and other Bukkit-based server software."
+                    "text": "Moonlit AI generates plugins compatible with Minecraft versions 1.16 through 1.20+, supporting Spigot, Paper, Purpur, and other Bukkit-based server software."
                   }
                 },
                 {
@@ -1983,7 +1739,7 @@ export default function Home() {
                   "name": "What does the free tier include?",
                   "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "Our free tier includes 100,000 AI tokens, enough to generate 15-25 medium-complexity plugins. This lets you fully evaluate Pegasus AI's capabilities before upgrading."
+                    "text": "Our free tier includes 100,000 AI tokens, enough to generate 15-25 medium-complexity plugins. This lets you fully evaluate Moonlit AI's capabilities before upgrading."
                   }
                 }
               ]
@@ -2020,8 +1776,8 @@ export default function Home() {
                 {
                   "@type": "ListItem",
                   "position": 4,
-                  "name": "Reviews",
-                  "item": "https://pegasus.ai/#reviews"
+                  "name": "Comparison",
+                  "item": "https://pegasus.ai/#comparison"
                 }
               ]
             })
@@ -2064,17 +1820,38 @@ export default function Home() {
         <main role="main">
           <article>
             <Hero onGetStartedClick={handleSignIn} session={session} onDashboardClick={handleDashboard} />
-            <section aria-label="Product advantages">
-              <Advantage />
-            </section>
             <section aria-label="Product showcase">
               <Showcase />
             </section>
             <section aria-label="Frequently asked questions">
               <FAQ />
             </section>
-            <section aria-label="Customer testimonials">
-              <Reviews />
+            <section aria-label="Product comparison">
+              <div id="comparison" className="py-20 sm:py-32 bg-[#0A0F1F]">
+                <div className="container mx-auto px-6">
+                  <div className="max-w-3xl mx-auto text-center mb-16">
+                    <motion.h2 
+                      className="text-4xl md:text-5xl font-extrabold text-white"
+                      initial={{ y: 50, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ duration: 0.8, delay: 0.2 }}
+                    >
+                      How We Compare
+                    </motion.h2>
+                    <motion.p 
+                      className="mt-4 text-lg text-slate-300"
+                      initial={{ y: 30, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ duration: 0.8, delay: 0.4 }}
+                    >
+                      See how Moonlit AI stands against the competition in features, quality, and value.
+                    </motion.p>
+                  </div>
+                  <div className="flex justify-center">
+                    <ComparisonTable />
+                  </div>
+                </div>
+              </div>
             </section>
             <section aria-label="Call to action">
               <Waitlist onSignInClick={handleSignIn} />
