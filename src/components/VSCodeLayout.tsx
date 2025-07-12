@@ -47,6 +47,7 @@ interface ChatMessage {
     type?: string;
     contextLoaded?: boolean;
     filesAnalyzed?: number;
+    isTimeout?: boolean;
   };
 }
 
@@ -102,7 +103,8 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
       timestamp: new Date(Date.now() - 1000 * 60 * 5) // 5 minutes ago
     }
   ]);
-  const [isChatLoading, setIsChatLoading] = useState(false);  // Refs for stable references
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [lastUserMessage, setLastUserMessage] = useState<string | null>(null);  // Refs for stable references
   const pluginIdRef = useRef<string | null>(null);
   const userIdRef = useRef<string | null>(null);
   const isLoadingRef = useRef(false);
@@ -381,11 +383,14 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
       setIsLoadingPlugin(false);
     }
   };
-  // Send chat message function
+  // Send chat message function with retry logic
   const sendChatMessage = useCallback(async (message: string) => {
     if (!message.trim() || isChatLoading) return;
 
     console.log('🔵 Starting chat message send:', { message, userId, pluginId });
+
+    // Store the message for potential retry
+    setLastUserMessage(message);
 
     // Add user message immediately
     const userMessage: ChatMessage = {
@@ -393,7 +398,9 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
       content: message,
       sender: 'user',
       timestamp: new Date()
-    };    // Use functional update to avoid stale closure issues
+    };
+
+    // Use functional update to avoid stale closure issues
     setChatMessages(prev => {
       console.log('🔵 Adding user message to chat');
       return [...prev, userMessage];
@@ -409,7 +416,8 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
         NODE_ENV: process.env.NODE_ENV
       });
       console.log('🔵 Sending request to:', chatApiUrl);
-        const response = await fetch(chatApiUrl, {
+
+      const response = await fetch(chatApiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -419,28 +427,49 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
           username: userId || 'anonymous',
           pluginName: pluginId || null
         }),
-        // Add timeout to prevent hanging - extended for AI processing
-        signal: AbortSignal.timeout(130000) // 130 second timeout (longer than backend's 120s)
+        // Shorter timeout to work with infrastructure limits
+        signal: AbortSignal.timeout(60000) // 60 second timeout
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Handle different types of errors
+        if (response.status === 504) {
+          throw new Error('GATEWAY_TIMEOUT');
+        } else if (response.status === 408) {
+          throw new Error('REQUEST_TIMEOUT');
+        } else {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
       }
 
       const data = await response.json();
       console.log('🔵 Received chat response:', data);
 
       if (data.success) {
+        let responseContent = data.message;
+        
+        // Handle timeout responses specially
+        if (data.isTimeout) {
+          responseContent = `⏱️ ${data.message}`;
+          
+          // Show notification about timeout
+          showSuccess('Processing continues...', 'Your request is being processed in the background. You can continue working while it completes.');
+        }
+
         const assistantMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
-          content: data.message,          sender: 'assistant',
+          content: responseContent,
+          sender: 'assistant',
           timestamp: new Date(),
           metadata: {
             type: data.type,
             contextLoaded: data.contextLoaded,
-            filesAnalyzed: data.filesAnalyzed
+            filesAnalyzed: data.filesAnalyzed,
+            isTimeout: data.isTimeout
           }
-        };        setChatMessages(prev => {
+        };
+
+        setChatMessages(prev => {
           console.log('🔵 Adding assistant response to chat');
           return [...prev, assistantMessage];
         });
@@ -473,14 +502,27 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
         });
       }    } catch (error) {
       console.error('🔴 Chat error:', error);
+      
+      let errorContent = 'Failed to communicate with AI assistant. Please try again.';
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError' || error.message.includes('timeout')) {
+          errorContent = '⏱️ The request timed out due to infrastructure limits. The AI may still be processing your request in the background. You can try asking again or continue with other tasks.';
+        } else if (error.message === 'GATEWAY_TIMEOUT') {
+          errorContent = '⏱️ Gateway timeout (504). The AI is processing a complex request that takes more than 60 seconds. Please try asking again in a moment or break down your request into smaller parts.';
+        } else if (error.message === 'REQUEST_TIMEOUT') {
+          errorContent = '⏱️ Request timeout (408). Please try again.';
+        }
+      }
+      
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        content: error instanceof Error && error.name === 'AbortError' 
-          ? 'Request timed out. Please try again.'
-          : 'Failed to communicate with AI assistant. Please try again.',
+        content: errorContent,
         sender: 'assistant',
         timestamp: new Date()
-      };      setChatMessages(prev => {
+      };
+
+      setChatMessages(prev => {
         console.log('🔵 Adding network error message to chat');
         return [...prev, errorMessage];
       });
@@ -489,7 +531,30 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
       console.log('🔵 Chat message send completed, setting loading to false');
       setIsChatLoading(false);
     }
-  }, [isChatLoading, userId, pluginId]);
+  }, [isChatLoading, userId, pluginId, showSuccess]);
+
+  // Retry last message function
+  const retryLastMessage = useCallback(async () => {
+    if (!lastUserMessage || isChatLoading) return;
+    
+    console.log('🔄 Retrying last message:', lastUserMessage);
+    
+    // Remove the last error message if it exists
+    setChatMessages(prev => {
+      const filtered = prev.filter(msg => 
+        !(msg.sender === 'assistant' && (
+          msg.content.includes('⏱️') || 
+          msg.content.includes('timeout') || 
+          msg.content.includes('Failed to communicate')
+        ))
+      );
+      return filtered;
+    });
+    
+    // Retry sending the message
+    await sendChatMessage(lastUserMessage);
+  }, [lastUserMessage, isChatLoading, sendChatMessage]);
+
   // Clear chat function
   const clearChat = useCallback(() => {
     setChatMessages([{
@@ -854,6 +919,7 @@ export function VSCodeLayout({ className = '', pluginId, userId }: VSCodeLayoutP
                 onSendMessage={sendChatMessage}
                 onClearChat={clearChat}
                 isLoading={isChatLoading}
+                onRetryLastMessage={retryLastMessage}
               />
             </ErrorBoundary>
           </div>

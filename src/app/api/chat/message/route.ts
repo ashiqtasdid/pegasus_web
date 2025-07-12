@@ -49,16 +49,34 @@ export async function POST(request: NextRequest) {
             username: actualUserId,
             pluginName
           }),
-          signal: AbortSignal.timeout(120000) // 120 second timeout (2 minutes) for AI processing
+          signal: AbortSignal.timeout(50000) // 50 second timeout to avoid infrastructure timeouts
         });
 
         if (response.ok) {
           const data = await response.json();
           return NextResponse.json(data);
+        } else {
+          console.warn('🔥 Backend responded with error:', response.status, response.statusText);
+          throw new Error(`Backend error: ${response.status}`);
         }
       } catch (error) {
         console.error('Backend chat service error:', error);
-        // Fall through to mock response
+        
+        // Check if it's a timeout error
+        if (error instanceof Error && (error.name === 'TimeoutError' || error.message.includes('timeout'))) {
+          console.log('🕒 Backend timeout detected, returning timeout response');
+          return NextResponse.json({
+            success: true,
+            message: '⏱️ I\'m still processing your request in the background. This is a complex operation that may take a few minutes. Please try asking again in a moment, or feel free to continue with other tasks.',
+            type: 'assistant',
+            contextLoaded: !!pluginName,
+            filesAnalyzed: 0,
+            isTimeout: true,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        // Fall through to mock response for other errors
       }
     }
 

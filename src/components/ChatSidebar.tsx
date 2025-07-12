@@ -24,6 +24,7 @@ interface ChatMessage {
     type?: string;
     contextLoaded?: boolean;
     filesAnalyzed?: number;
+    isTimeout?: boolean;
   };
 }
 
@@ -32,13 +33,15 @@ interface ChatSidebarProps {
   onSendMessage?: (message: string) => Promise<void>;
   onClearChat?: () => void;
   isLoading?: boolean;
+  onRetryLastMessage?: () => Promise<void>;
 }
 
 export function ChatSidebar({ 
   messages: externalMessages, 
   onSendMessage: externalOnSendMessage, 
   onClearChat: externalOnClearChat,
-  isLoading: externalIsLoading
+  isLoading: externalIsLoading,
+  onRetryLastMessage: externalOnRetryLastMessage
 }: ChatSidebarProps) {// Use external messages if provided, otherwise fallback to internal state
   const [internalMessages, setInternalMessages] = useState<ChatMessage[]>([
     {
@@ -174,6 +177,23 @@ export function ChatSidebar({
                     : 'bg-muted/40 border border-muted/50'
                 }`}>
                   <div className="text-sm break-words whitespace-pre-wrap">{msg.content}</div>
+                  {/* Show retry button for timeout messages */}
+                  {msg.sender === 'assistant' && 
+                   (msg.content.includes('⏱️') || msg.content.includes('timeout') || msg.content.includes('Gateway timeout')) && 
+                   externalOnRetryLastMessage && (
+                    <div className="mt-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={externalOnRetryLastMessage}
+                        disabled={isLoading}
+                        className="h-6 text-xs"
+                      >
+                        <RefreshCw className="w-3 h-3 mr-1" />
+                        Retry
+                      </Button>
+                    </div>
+                  )}
                   <div className={`text-xs mt-1 ${
                     msg.sender === 'user' ? 'opacity-75' : 'text-muted-foreground'
                   }`}>
